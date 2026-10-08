@@ -9,6 +9,7 @@ from tradingagents.agents.tools import (
     get_income_statement,
     get_insider_transactions,
 )
+from tradingagents.dataflows.financial_metrics import summary_from_state
 
 # The tools this analyst is offered; its tool node is built from the same tuple.
 TOOLS = (
@@ -24,6 +25,13 @@ def create_fundamentals_analyst(llm):
     def fundamentals_analyst_node(state):
         current_date = state["trade_date"]
         instrument_context = get_instrument_context_from_state(state)
+        metrics = summary_from_state(state)
+        if metrics:
+            instrument_context += (
+                "\n\n# Computed metrics from this run's tool messages\n"
+                "Use the source units and dated periods below; do not substitute "
+                "column offsets for a prior-year comparison.\n" + metrics
+            )
 
         system_message = (
             "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."

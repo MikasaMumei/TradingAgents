@@ -1,0 +1,1411 @@
+diff --git a/tests/fixtures/financial-statements-20261008.json b/tests/fixtures/financial-statements-20261008.json
+new file mode 100644
+index 0000000..88e42a3
+--- /dev/null
++++ b/tests/fixtures/financial-statements-20261008.json
+@@ -0,0 +1,6 @@
++{
++  "AAPL::fin_income": "# Income Statement for AAPL (quarterly), USD in millions unless the row says otherwise\n# SEC EDGAR facts filed on or before 2026-10-08, at the values filed then\n,2025-03-29,2025-06-28,2025-12-27,2026-03-28,2026-06-27\nRevenue,95359,94036,143756,111184,109417\nCost of Revenue,50492,50318,74525,56403,54647\nGross Profit,44867,43718,69231,54781,54770\nOperating Income,29589,28202,50852,35885,35695\nNet Income,24780,23434,42097,29578,29789\nDiluted EPS (USD/shares),1.65,1.57,2.84,2.01,2.02\n",
++  "AAPL::fin_cashflow": "# Cash Flow Statement for AAPL (quarterly), USD in millions unless the row says otherwise\n# SEC EDGAR facts filed on or before 2026-10-08, at the values filed then\n,2025-03-29 (6 months),2025-06-28 (9 months),2025-12-27,2026-03-28 (6 months),2026-06-27 (9 months)\nOperating Cash Flow,53887,81754,53925,82627,116996\nInvesting Cash Flow,12709,17782,-4886,-11054,-18811\nFinancing Cash Flow,-68377,-93210,-39656,-61935,-94575\nCapital Expenditure,6011,9473,2373,4344,6799\n",
++  "600519.SS::fin_income": "# Income Statement data for 600519.SS (quarterly)\n,2026-06-30,2026-03-31,2025-12-31,2025-09-30,2025-06-30,2025-03-31\nTax Effect Of Unusual Items,8001186.316169,5730750.796874,29855408.228673,,-459775.394536,2098224.293944\nTax Rate For Calcs,0.251753,0.250096,0.273759,,0.253801,0.249972\nNormalized EBITDA,23869055453.49,37535702170.39,25264989384.31,,25750297730.73,37025490369.29\nTotal Unusual Items,31781944.32,22914200.25,109057125.87,,-1811558.01,8393845.35\nTotal Unusual Items Excluding Goodwill,31781944.32,22914200.25,109057125.87,,-1811558.01,8393845.35\nNet Income From Continuing Operation Net Minority Interest,17274367535.41,27242512886.45,17693320389.5,,18555488059.34,26847474238.76\nReconciled Cost Of Revenue,3953033365.56,5520729200.32,3708305497.14,,3716060533.5,4061430550.43\nEBITDA,23900837397.81,37558616370.64,25374046510.18,,25748486172.72,37033884214.64\nEBIT,23900837397.81,37558616370.64,25374046510.18,,25748486172.72,37033884214.64\nNet Interest Income,127434381.98,115803334.98,180509846.95,,204095136.88,282549536.99\nInterest Expense,5667864.54,15366726.62,22229359.78,,1939055.69,2430564.85\nInterest Income,132707368.48,133866727.66,198225175.01,,206930941.67,286641752.14\nNormalized Income,17250586777.40617,27225329436.996876,17614118671.858673,,18556839841.955463,26841178617.703945\nNet Income From Continuing And Discontinued Operation,17274367535.41,27242512886.45,17693320389.5,,18555488059.34,26847474238.76\nTotal Expenses,13824952658.04,17264004720.27,16081278013.84,,14076330485.0,14650095837.62\nTotal Operating Income As Reported,23874282999.85,37537008686.42,25319255597.76,,25732375146.37,37036598228.0\nDiluted Average Shares,,1251953717.0,,,,1255728449.0\nBasic Average Shares,,1251953717.0,,,,1255728449.0\nDiluted EPS,,21.76,,,,21.38\nBasic EPS,,21.76,,,,21.38\nNet Income Common Stockholders,17274367535.41,27242512886.45,17693320389.5,,18555488059.34,26847474238.76\nOtherunder Preferred Stock Dividend,0.0,0.0,0.0,,0.0,0.0\nNet Income,17274367535.41,27242512886.45,17693320389.5,,18555488059.34,26847474238.76\nMinority Interests,-605131541.48,-911318603.44,-718199698.0,,-656557378.29,-927161772.85\nNet Income Including Noncontrolling Interests,17879499076.89,28153831489.89,18411520087.5,,19212045437.63,27774636011.61\nNet Income Continuous Operations,17879499076.89,28153831489.89,18411520087.5,,19212045437.63,27774636011.61\nTax Provision,6015670456.38,9389418154.13,6940297062.9,,6534501679.4,9256817638.18\nPretax Income,23895169533.27,37543249644.02,25351817150.4,,25746547117.03,37031453649.79\nOther Non Operating Income Expenses,20886533.42,6240957.6,32561552.64,,14171970.66,-5144578.21\nSpecial Income Charges,6622285.5,25991207.45,39850540.1,,-2916587.71,7740871.74\nOther Special Charges,-9321.55,-130409.49,-2594699.74,,-20131.92,-491793.53\nWrite Off,-6612963.95,-25860797.96,-37255840.36,,2936719.63,-7249078.21\nNet Non Operating Interest Income Expense,127434381.98,115803334.98,180509846.95,,204095136.88,282549536.99\nTotal Other Finance Cost,-394878.04,2696666.06,-4514031.72,,896749.1,1661650.3\nInterest Expense Non Operating,5667864.54,15366726.62,22229359.78,,1939055.69,2430564.85\nInterest Income Non Operating,132707368.48,133866727.66,198225175.01,,206930941.67,286641752.14\nOperating Income,23750207039.94,37438907664.96,25069004242.19,,25573981485.2,36793354746.15\nOperating Expense,9871919292.48,11743275519.95,12372972516.7,,10360269951.5,10588665287.19\nOther Operating Expenses,6454752292.51,8227407160.96,6708519758.33,,6777565308.0,7164819273.48\nResearch And Development,55615495.14,59310724.46,77025605.6,,47551214.05,26350331.91\nSelling General And Administration,1842094623.51,3459528630.69,1804826156.01,4519194230.42,2047580066.35,\nSelling And Marketing Expense,1600543576.65,1605764764.88,2774827348.2,,1765140468.56,1495322480.9\nGeneral And Administrative Expense,241551046.86,1853763865.81,-970001192.19,3300984927.4,282439597.79,\nGross Profit,33622126332.42,49182183184.91,37441976758.89,,35934251436.7,47382020033.34\nCost Of Revenue,3953033365.56,5520729200.32,3708305497.14,,3716060533.5,4061430550.43\nTotal Revenue,37575159697.98,54702912385.23,41150282256.03,,39650311970.2,51443450583.77\nOperating Revenue,37575159697.98,54702912385.23,41150282256.03,,39650311970.2,51443450583.77\n",
++  "600519.SS::fin_cashflow": "# Cash Flow data for 600519.SS (quarterly)\n,2026-06-30,2026-03-31,2025-12-31,2025-06-30,2025-03-31\nFree Cash Flow,43553507681.54,26305099685.24,22480670187.56,3614973924.53,7908091297.57\nCapital Expenditure,-227351168.39,-604791583.89,-844732646.52,-694891460.42,-901104348.81\nEnd Cash Position,184811095482.62,177968227124.35,126425609447.72,142885262656.67,176548407056.33\nBeginning Cash Position,177968227124.35,126425609447.72,159502462342.28,176548407056.33,169970089257.83\nEffect Of Exchange Rate Changes,-803892.38,-705910.26,-447172.9,2444378.33,832584.65\nChanges In Cash,6843672250.65,51543323586.89,-33076405721.66,-33665588777.99,6577485213.85\nFinancing Cash Flow,-36938783622.53,-1005514179.59,-30183277702.59,-38285325153.03,-1607488478.75\nNet Other Financing Charges,-1894637779.78,-1005514179.59,-154140161.83,-3614163415.84,-1607488478.75\nCash Dividends Paid,,,-30000637540.76,,\nInvesting Cash Flow,1597023.25,25638946497.35,-26218530853.15,309870990.09,-624221953.78\nNet Other Investing Changes,8835565.83,-1612734.86,-4179229.75,-406847.57,-658636.97\nNet Investment Purchase And Sale,220082732.46,26245339296.1,-25369687884.38,1005129673.08,277533280.0\nSale Of Investment,220082732.46,39995339296.1,20381480800.46,1105129673.08,277533280.0\nPurchase Of Investment,0.0,-13750000000.0,-45751168684.84,,\nNet PPE Purchase And Sale,-227321275.04,-604780063.89,-844663739.02,-694851835.42,-901096596.81\nSale Of PPE,29893.35,11520.0,68907.5,39625.0,7752.0\nPurchase Of PPE,-227351168.39,-604791583.89,-844732646.52,-694891460.42,-901104348.81\nCash Flowsfromusedin Operating Activities Direct,43780858849.93,26909891269.13,23325402834.08,4309865384.95,8809195646.38\nTaxes Refund Paid Direct,-18232225067.62,-24030967427.8,-18321884044.24,-19501730087.98,-22168159368.57\nInterest Received Direct,734097425.05,708996270.43,353541395.61,709637399.23,763757661.18\nInterest Paid Direct,-46114405.37,-25728017.28,-35349413.72,-10703336.84,-33147052.55\nClassesof Cash Payments,8994434244.32,-5214377508.21,-7712639709.66,-23595980075.54,-19573749222.37\nOther Cash Paymentsfrom Operating Activities,14846339088.21,5348699471.18,-1777795956.24,-17879638086.21,-9248262509.08\nPaymentson Behalfof Employees,-2944272857.25,-7351815319.98,-3079977570.78,-2303447050.18,-7662338317.82\nPaymentsto Suppliersfor Goodsand Services,-2907631986.64,-3211261659.41,-2854866182.64,-3412894939.15,-2663148395.47\nClassesof Cash Receiptsfrom Operating Activities,52330666653.55,55471967951.99,49041734606.09,46708641486.08,49820493628.69\nOther Cash Receiptsfrom Operating Activities,10301558407.08,-920621196.93,3843051109.88,7766088644.78,-6323568490.24\nReceiptsfrom Customers,42029108246.47,56392589148.92,45198683496.21,38942552841.3,56144062118.93\n"
++}
+\ No newline at end of file
+diff --git a/tests/test_financial_metrics.py b/tests/test_financial_metrics.py
+new file mode 100644
+index 0000000..31a777f
+--- /dev/null
++++ b/tests/test_financial_metrics.py
+@@ -0,0 +1,169 @@
++"""Financial anchors from trimmed real tool CSVs, with run/period/unit isolation."""
++
++import json
++from pathlib import Path
++
++from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
++
++from tests.test_structured_reply import OfflineChatModel
++from tradingagents.agents.analysts.fundamentals_analyst import create_fundamentals_analyst
++from tradingagents.dataflows.financial_metrics import build_summary, parse, summary_from_state
++
++FIXTURES = json.loads(
++    (Path(__file__).parent / "fixtures/financial-statements-20261008.json").read_text(
++        encoding="utf-8"
++    )
++)
++
++
++def messages(ticker, day="2026-10-08", income=None, cash=None):
++    result = []
++    for tool, content in (("get_income_statement", income), ("get_cashflow", cash)):
++        if content is None:
++            continue
++        result.extend(
++            [
++                AIMessage(
++                    content="",
++                    tool_calls=[
++                        {"name": tool, "id": tool, "args": {"ticker": ticker, "curr_date": day}}
++                    ],
++                ),
++                ToolMessage(content=content, name=tool, tool_call_id=tool),
++            ]
++        )
++    return result
++
++
++def state(ticker="AAPL", day="2026-10-08", **kwargs):
++    return {
++        "company_of_interest": ticker,
++        "trade_date": day,
++        "messages": messages(ticker, day, **kwargs),
++    }
++
++
++def test_aapl_date_alignment_and_explicit_units():
++    output = build_summary(FIXTURES["AAPL::fin_income"], FIXTURES["AAPL::fin_cashflow"])
++    assert "109,417.00 (USD in millions)" in output
++    assert "50.06%" in output and "+27.12%" in output
++    assert "against 2025-06-28" in output
++    assert "6-month cumulative as filed, ending 2026-03-28" in output
++    assert "2026H1" not in output
++
++
++def test_moutai_sums_quarters_with_unknown_currency_not_usd():
++    output = build_summary(FIXTURES["600519.SS::fin_income"], FIXTURES["600519.SS::fin_cashflow"])
++    assert "11,523,065,222.10" in output
++    assert "69,858,607,366.78" in output
++    assert "13,119,061,031.33" in output  # Operating-CF alias must be found.
++    assert "source units (currency/scale not stated)" in output
++    assert "USD" not in output and "CNY" not in output
++
++
++def test_empty_state_does_not_read_old_log(tmp_path, monkeypatch):
++    monkeypatch.chdir(tmp_path)
++    log = tmp_path / "data/logs/AAPL/2026-10-08/message_tool.log"
++    log.parent.mkdir(parents=True)
++    original = b"[Data] old run revenue must never be consumed"
++    log.write_bytes(original)
++    assert summary_from_state(state()) == ""
++    assert log.read_bytes() == original
++
++
++def test_wrong_ticker_and_previous_asof_are_rejected():
++    current = state(income=FIXTURES["AAPL::fin_income"])
++    current["company_of_interest"] = "600519.SS"
++    assert summary_from_state(current) == ""
++    current = state(day="2026-10-07", income=FIXTURES["AAPL::fin_income"])
++    assert summary_from_state(current) == ""
++
++
++def test_tool_call_date_must_match_active_run():
++    current = state(income=FIXTURES["AAPL::fin_income"])
++    current["messages"][0].tool_calls[0]["args"]["curr_date"] = "2026-10-07"
++    assert summary_from_state(current) == ""
++
++
++def test_later_failed_tool_result_does_not_reuse_previous_value():
++    current = state(income=FIXTURES["AAPL::fin_income"])
++    current["messages"] += [
++        AIMessage(
++            content="",
++            tool_calls=[
++                {
++                    "name": "get_income_statement",
++                    "id": "failed",
++                    "args": {"ticker": "AAPL", "curr_date": "2026-10-08"},
++                }
++            ],
++        ),
++        ToolMessage(content="Vendor unavailable", status="error", tool_call_id="failed"),
++    ]
++    assert summary_from_state(current) == ""
++
++
++def test_duplicate_end_dates_preserve_distinct_durations():
++    csv = "# Income Statement for AAPL (quarterly), USD in millions\n,2026-06-27,2026-06-27 (9 months)\nRevenue,100,300\n"
++    statement = parse(csv)
++    assert len(statement.periods) == 2
++    assert [p.values["Revenue"] for p in statement.periods] == [100, 300]
++
++
++def test_zero_revenue_and_missing_prior_period_do_not_crash_or_guess():
++    output = build_summary(
++        "# Income Statement for AAPL (quarterly)\n,2026-06-27\nRevenue,0\nGross Profit,0\nNet Income,10\n",
++        None,
++    )
++    assert "Revenue: 0.00" in output
++    assert "Gross margin" not in output
++    assert "YoY: NOT AVAILABLE" in output
++
++
++def test_missing_quarter_is_not_presented_as_total():
++    text = "# Cash Flow data for 600519.SS (quarterly)\n,2025-06-30\nFree Cash Flow,100\n"
++    assert "sum of" not in build_summary(None, text)
++
++
++def test_flattened_log_is_not_guessed_back_into_csv():
++    text = FIXTURES["AAPL::fin_income"].replace("\n", " ")
++    assert "NOT AVAILABLE" in build_summary(text, None)
++
++
++def test_latest_cumulative_cashflow_is_printed_once():
++    text = "# Cash Flow Statement for AAPL (quarterly), USD in millions\n,2026-03-28 (6 months)\nOperating Cash Flow,12345\n"
++    output = build_summary(None, text)
++    assert output.count("12,345.00") == 1
++    assert "6-month cumulative as filed" in output
++    assert "H1" not in output
++
++
++def test_csv_parser_failure_degrades_to_unavailable(monkeypatch):
++    import csv
++
++    previous = csv.field_size_limit()
++    try:
++        csv.field_size_limit(32)
++        text = "# Income Statement for AAPL (quarterly)\n,2026-06-27\n" + "x" * 100 + ",1\n"
++        assert "NOT AVAILABLE" in build_summary(text, None)
++    finally:
++        csv.field_size_limit(previous)
++
++
++def test_real_fundamentals_node_receives_metrics_on_second_round():
++    first_call = messages("AAPL", income=FIXTURES["AAPL::fin_income"])[0]
++    model = OfflineChatModel(responses=[first_call, AIMessage(content="Evidence-based report")])
++    node = create_fundamentals_analyst(model)
++    initial = state()
++    initial["messages"] = [HumanMessage(content="Analyze AAPL")]
++    result = node(initial)
++    assert result["fundamentals_report"] == ""
++    assert "109,417.00" not in str(model.prompts[0])
++    second = state(income=FIXTURES["AAPL::fin_income"])
++    second["messages"] = [initial["messages"][0]] + second["messages"]
++    result = node(second)
++    assert result["fundamentals_report"] == "Evidence-based report"
++    assert "109,417.00" in model.prompts[1][0].content
++    assert "50.06%" in model.prompts[1][0].content
++    assert "+27.12%" in model.prompts[1][0].content
++    assert model.calls == 2
+diff --git a/tests/test_structured_reply.py b/tests/test_structured_reply.py
+new file mode 100644
+index 0000000..f7f4179
+--- /dev/null
++++ b/tests/test_structured_reply.py
+@@ -0,0 +1,253 @@
++"""Exercise the installed LangChain parser, not a mock exception.response."""
++
++from typing import Any
++from unittest.mock import MagicMock
++
++import pytest
++from langchain_core.language_models.chat_models import BaseChatModel
++from langchain_core.messages import AIMessage
++from langchain_core.outputs import ChatGeneration, ChatResult
++from pydantic import Field
++
++from tradingagents.agents.managers.portfolio_manager import create_portfolio_manager
++from tradingagents.agents.managers.research_manager import create_research_manager
++from tradingagents.agents.schemas import ResearchPlan, render_research_plan
++from tradingagents.agents.structured import bind_structured, invoke_structured_or_freetext
++
++
++class OfflineChatModel(BaseChatModel):
++    responses: list[AIMessage]
++    calls: int = 0
++    prompts: list[list[Any]] = Field(default_factory=list)
++
++    @property
++    def _llm_type(self) -> str:
++        return "offline-parser-regression"
++
++    def bind_tools(self, tools, **kwargs):
++        return self.bind(**kwargs)
++
++    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
++        response = self.responses[self.calls]
++        self.calls += 1
++        self.prompts.append(messages)
++        return ChatResult(generations=[ChatGeneration(message=response)])
++
++
++def test_plain_first_decision_survives_real_parser_none():
++    first = "**Recommendation**: Overweight\nThe original evidence supports this decision."
++    model = OfflineChatModel(responses=[AIMessage(content=first)])
++    plain = MagicMock()
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    result = invoke_structured_or_freetext(
++        chain, plain, "prompt", render_research_plan, "Research Manager"
++    )
++    assert result == first
++    assert model.calls == 1
++    plain.invoke.assert_not_called()
++
++
++def test_real_validation_error_keeps_original_text():
++    first = "**Recommendation**: Overweight\nAn incomplete schema must not reverse this call."
++    model = OfflineChatModel(
++        responses=[
++            AIMessage(
++                content=first,
++                tool_calls=[
++                    {"name": "ResearchPlan", "args": {"recommendation": "Overweight"}, "id": "bad"},
++                ],
++            )
++        ]
++    )
++    plain = MagicMock()
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    assert (
++        invoke_structured_or_freetext(chain, plain, "p", render_research_plan, "Research Manager")
++        == first
++    )
++    assert model.calls == 1
++    plain.invoke.assert_not_called()
++
++
++def test_successful_schema_is_rendered_without_plain_call():
++    model = OfflineChatModel(
++        responses=[
++            AIMessage(
++                content="",
++                tool_calls=[
++                    {
++                        "name": "ResearchPlan",
++                        "id": "ok",
++                        "args": {
++                            "recommendation": "Overweight",
++                            "rationale": "Evidence",
++                            "strategic_actions": "Gradual entry",
++                        },
++                    },
++                ],
++            )
++        ]
++    )
++    plain = MagicMock()
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    result = invoke_structured_or_freetext(
++        chain, plain, "p", render_research_plan, "Research Manager"
++    )
++    assert result.startswith("**Recommendation**: Overweight")
++    assert model.calls == 1
++    plain.invoke.assert_not_called()
++
++
++def test_unrecoverable_reply_logs_new_decision(caplog):
++    model = OfflineChatModel(responses=[AIMessage(content="")])
++    plain = MagicMock()
++    plain.invoke.return_value = AIMessage(content="**Recommendation**: Underweight")
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    result = invoke_structured_or_freetext(
++        chain, plain, "p", render_research_plan, "Research Manager"
++    )
++    assert "Underweight" in result
++    assert model.calls == 1
++    plain.invoke.assert_called_once()
++    assert "new decision" in caplog.text and "original rating unknown" in caplog.text
++
++
++def test_research_manager_real_factory_preserves_first_reply():
++    first = "**Recommendation**: Overweight\nOriginal research thesis."
++    model = OfflineChatModel(responses=[AIMessage(content=first)])
++    result = create_research_manager(model)(
++        {
++            "company_of_interest": "AAPL",
++            "investment_debate_state": {
++                "history": "Evidence",
++                "count": 1,
++            },
++        }
++    )
++    assert result["investment_plan"] == first
++    assert model.calls == 1
++
++
++def test_portfolio_manager_real_factory_preserves_first_rating():
++    first = "**Rating**: Overweight\nOriginal portfolio thesis."
++    model = OfflineChatModel(responses=[AIMessage(content=first)])
++    result = create_portfolio_manager(model)(
++        {
++            "company_of_interest": "AAPL",
++            "investment_plan": "plan",
++            "trader_investment_plan": "proposal",
++            "risk_debate_state": {
++                "history": "Evidence",
++                "count": 1,
++                **dict.fromkeys(
++                    (
++                        "aggressive_history",
++                        "conservative_history",
++                        "neutral_history",
++                        "current_aggressive_response",
++                        "current_conservative_response",
++                        "current_neutral_response",
++                    ),
++                    "",
++                ),
++            },
++        }
++    )
++    assert result["final_trade_decision"] == first
++    assert result["final_rating"] == "Overweight"
++    assert model.calls == 1
++
++
++def test_adapter_without_raw_support_uses_one_plain_call():
++    class OldAdapter:
++        def with_structured_output(self, schema):
++            raise AssertionError("Should not bind a parser that discards raw output")
++
++    assert bind_structured(OldAdapter(), ResearchPlan, "Research Manager") is None
++
++
++def test_adapter_rejecting_raw_keyword_with_value_error_uses_plain():
++    class Adapter:
++        def with_structured_output(self, schema, **kwargs):
++            raise ValueError("include_raw is unsupported")
++
++    assert bind_structured(Adapter(), ResearchPlan, "Research Manager") is None
++
++
++def test_unrelated_binding_value_error_is_not_hidden():
++    class Adapter:
++        def with_structured_output(self, schema, **kwargs):
++            raise ValueError("Invalid schema")
++
++    with pytest.raises(ValueError, match="Invalid schema"):
++        bind_structured(Adapter(), ResearchPlan, "Research Manager")
++
++
++def test_visible_block_text_survives_without_reasoning():
++    first = AIMessage(
++        content=[
++            {"type": "reasoning", "text": "private thought"},
++            {"type": "text", "text": "**Recommendation**: Hold"},
++        ]
++    )
++    model = OfflineChatModel(responses=[first])
++    plain = MagicMock()
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    assert (
++        invoke_structured_or_freetext(chain, plain, "p", render_research_plan, "Research Manager")
++        == "**Recommendation**: Hold"
++    )
++    plain.invoke.assert_not_called()
++
++
++def test_probe_records_parse_miss_as_retained_text_not_success(tmp_path, monkeypatch):
++    from tools_probe import probe_lib
++
++    class ProbedModel(OfflineChatModel):
++        pass
++
++    monkeypatch.setitem(probe_lib.STATE, "log", None)
++    probe_lib.install(ProbedModel)
++    model = ProbedModel(responses=[AIMessage(content="**Recommendation**: Overweight")])
++    log = probe_lib.set_log(tmp_path / "probe.jsonl")
++    chain = bind_structured(model, ResearchPlan, "Research Manager")
++    plain = MagicMock()
++    result = invoke_structured_or_freetext(
++        chain,
++        plain,
++        "p",
++        render_research_plan,
++        "Research Manager",
++    )
++    counts = probe_lib.classify(log)
++    assert result == "**Recommendation**: Overweight"
++    assert counts["structured_ok"] == 0
++    assert counts["structured_failed"] == counts["structured_raw_retained"] == 1
++    assert counts["structured_call_records"] == 1
++    assert counts["calls"][0]["outcome"] == "structured_attempt"
++    plain.invoke.assert_not_called()
++
++
++def test_probe_exception_response_matches_native_preservation(tmp_path, monkeypatch):
++    from langchain_core.runnables import RunnableLambda
++
++    from tools_probe import probe_lib
++
++    def failed(_):
++        error = ValueError("Transport failure with visible reply")
++        error.response = AIMessage(content="**Recommendation**: Overweight")
++        raise error
++
++    monkeypatch.setitem(probe_lib.STATE, "log", None)
++    log = probe_lib.set_log(tmp_path / "probe.jsonl")
++    plain = MagicMock()
++    result = invoke_structured_or_freetext(
++        probe_lib._Structured(RunnableLambda(failed), "ResearchPlan"),
++        plain,
++        "p",
++        render_research_plan,
++        "Research Manager",
++    )
++    assert result == "**Recommendation**: Overweight"
++    assert probe_lib.classify(log)["structured_raw_retained"] == 1
++    plain.invoke.assert_not_called()
+diff --git a/tests/test_suite_isolation.py b/tests/test_suite_isolation.py
+index a14590d..a2e037c 100644
+--- a/tests/test_suite_isolation.py
++++ b/tests/test_suite_isolation.py
+@@ -6,13 +6,19 @@ import pytest
+ 
+ 
+ @pytest.mark.unit
+-@pytest.mark.parametrize("connect", [
+-    lambda: socket.create_connection(("192.0.2.1", 80), timeout=1),
+-    lambda: socket.socket().connect_ex(("192.0.2.1", 80)),
+-    lambda: socket.getaddrinfo("example.com", 443),
+-    # yfinance's HTTP client is libcurl, which never touches Python's sockets.
+-    lambda: __import__("curl_cffi.requests").requests.Session().get("http://192.0.2.1", timeout=1),
+-], ids=["connect", "connect_ex", "dns", "curl_cffi"])
++@pytest.mark.parametrize(
++    "connect",
++    [
++        lambda: socket.create_connection(("192.0.2.1", 80), timeout=1),
++        lambda: socket.socket().connect_ex(("192.0.2.1", 80)),
++        lambda: socket.getaddrinfo("example.com", 443),
++        # yfinance's HTTP client is libcurl, which never touches Python's sockets.
++        lambda: (
++            __import__("curl_cffi.requests").requests.Session().get("http://192.0.2.1", timeout=1)
++        ),
++    ],
++    ids=["connect", "connect_ex", "dns", "curl_cffi"],
++)
+ def test_a_test_cannot_reach_the_network(connect):
+     """A test that silently depends on a live vendor passes or fails with the
+     machine it runs on; conftest refuses the connection instead."""
+@@ -33,13 +39,16 @@ def test_a_test_saves_cli_selections_to_its_own_directory(tmp_path):
+ 
+ 
+ @pytest.mark.unit
+-def test_yfinance_keeps_its_cache_out_of_the_users_home():
+-    """yfinance caches each symbol's time zone on disk, in the home directory by default."""
++def test_yfinance_uses_a_unique_test_cache():
++    """Windows temp lives under HOME; isolation means a suite-owned temp cache."""
++    import tempfile
+     from pathlib import Path
+ 
+     from yfinance.cache import _TzDBManager
+ 
+-    assert not Path(_TzDBManager.get_location()).is_relative_to(Path.home())
++    cache = Path(_TzDBManager.get_location()).resolve()
++    assert cache.parent == Path(tempfile.gettempdir()).resolve()
++    assert cache.name.startswith("tradingagents-tests-yf-")
+ 
+ 
+ @pytest.mark.unit
+diff --git a/tools_probe/probe_lib.py b/tools_probe/probe_lib.py
+new file mode 100644
+index 0000000..f211310
+--- /dev/null
++++ b/tools_probe/probe_lib.py
+@@ -0,0 +1,417 @@
++r"""Per-call record of what the LLM was actually asked, and what came back.
++
++Three things this gets right that a hook on ``bind_tools`` does not:
++
++* Node identity comes from langgraph's own ``langgraph_node`` metadata, not
++  from pattern-matching the system prompt.
++* The bound-tool list lives in a context variable set for the duration of one
++  binding's invocation, not in shared module state. Shared state let a
++  concurrent analyst's tools be attributed to another call, and made the
++  second of two consecutive calls on one binding look tool-less.
++* A structured attempt is identified by wrapping ``with_structured_output``,
++  which is what the framework actually calls. Its outcome is then known
++  directly: an instance came back, or it did not and the caller fell back.
++
++Each call is one JSON line. Keys, counts and lengths only -- never the prompt,
++the reply text, or the key.
++"""
++
++from __future__ import annotations
++
++import contextvars
++import datetime as _dt
++import json
++import pathlib
++import threading
++
++from langchain_core.runnables import Runnable
++
++# Set while one binding's invoke is in flight, so nested or concurrent calls
++# each see their own tool list.
++_CTX = contextvars.ContextVar("probe_call_ctx", default=None)
++
++STATE = {
++    "log": None,
++    "seq": 0,
++    "node_counts": {},
++    "lock": threading.Lock(),
++    "run_meta": {},
++}
++
++BODY_HEAD_CHARS = 80
++
++
++# ---------------------------------------------------------------- logging
++
++
++def set_log(path: pathlib.Path, meta: dict | None = None) -> pathlib.Path:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text("", encoding="utf-8")
++    with STATE["lock"]:
++        STATE["log"] = path
++        STATE["seq"] = 0
++        STATE["node_counts"] = {}
++        STATE["run_meta"] = dict(meta or {})
++    path.parent.mkdir(parents=True, exist_ok=True)
++    (path.parent / (path.stem + ".meta.json")).write_text(
++        json.dumps(
++            dict(meta or {}, started=_dt.datetime.now().isoformat(timespec="seconds")),
++            ensure_ascii=False,
++            indent=2,
++        ),
++        encoding="utf-8",
++    )
++    return path
++
++
++def note_report(path) -> None:
++    """Bind this log to the report the run produced."""
++    with STATE["lock"]:
++        STATE["run_meta"]["report_dir"] = str(path)
++        if STATE["log"] is not None:
++            (STATE["log"].parent / (STATE["log"].stem + ".meta.json")).write_text(
++                json.dumps(STATE["run_meta"], ensure_ascii=False, indent=2),
++                encoding="utf-8",
++            )
++
++
++def _write(record: dict) -> None:
++    with STATE["lock"]:
++        log = STATE["log"]
++        if log is None:
++            return
++        with log.open("a", encoding="utf-8") as handle:
++            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
++
++
++# ---------------------------------------------------------------- context
++
++
++def _tool_names(tools) -> list[str]:
++    names = []
++    for tool in tools or []:
++        if isinstance(tool, dict):
++            fn = tool.get("function")
++            names.append(fn.get("name") if isinstance(fn, dict) else tool.get("name"))
++        else:
++            names.append(getattr(tool, "name", None) or getattr(tool, "__name__", None))
++    return [n for n in names if n]
++
++
++def _choice_text(choice) -> str:
++    if choice is None:
++        return "<unset>"
++    if isinstance(choice, str):
++        return choice
++    try:
++        if isinstance(choice, dict):
++            fn = choice.get("function") or {}
++            return "function:%s" % (fn.get("name") if isinstance(fn, dict) else choice.get("name"))
++    except Exception:
++        pass
++    return str(choice)[:40]
++
++
++class _Bound(Runnable):
++    """Delegates to a binding while holding its tool list for the duration.
++
++    Two constraints shape this. langchain returns a pydantic model from
++    bind_tools, and pydantic refuses attribute assignment. And langchain
++    composes structured output with ``llm | parser``, so whatever comes back
++    has to be a real Runnable or coercion fails. Subclassing Runnable satisfies
++    both without touching the binding.
++    """
++
++    def __init__(self, inner, info):
++        super().__init__()
++        self._inner = inner
++        self._info = info
++
++    def invoke(self, input, config=None, **kwargs):
++        token = _CTX.set({**(_CTX.get() or {}), **self._info})
++        try:
++            return self._inner.invoke(input, config, **kwargs)
++        finally:
++            _CTX.reset(token)
++
++    async def ainvoke(self, input, config=None, **kwargs):
++        token = _CTX.set({**(_CTX.get() or {}), **self._info})
++        try:
++            return await self._inner.ainvoke(input, config, **kwargs)
++        finally:
++            _CTX.reset(token)
++
++    def __getattr__(self, name):
++        return getattr(object.__getattribute__(self, "_inner"), name)
++
++
++class _Structured(Runnable):
++    """Same for a structured-output runnable, plus the outcome is recorded."""
++
++    def __init__(self, inner, schema_name):
++        super().__init__()
++        self._inner = inner
++        self._schema = schema_name
++
++    def _record(self, token, call):
++        try:
++            result = call()
++        except Exception as exc:
++            from tradingagents.agents.structured import reply_text
++
++            _write(
++                {
++                    "event": "structured_result",
++                    "schema": self._schema,
++                    "ok": False,
++                    "raw_text_retained": bool(reply_text(getattr(exc, "response", None)).strip()),
++                    "error": type(exc).__name__,
++                }
++            )
++            raise
++        finally:
++            _CTX.reset(token)
++        self._record_result(result)
++        return result
++
++    def _record_result(self, result):
++        from tradingagents.agents.structured import reply_text
++
++        envelope = isinstance(result, dict) and {"raw", "parsed", "parsing_error"} <= result.keys()
++        parsed = result.get("parsed") if envelope else result
++        raw = result.get("raw") if envelope else None
++        _write(
++            {
++                "event": "structured_result",
++                "schema": self._schema,
++                "ok": parsed is not None,
++                "raw_text_retained": parsed is None and bool(reply_text(raw).strip()),
++            }
++        )
++
++    def invoke(self, input, config=None, **kwargs):
++        token = _CTX.set(
++            {"tools": [], "tool_choice": "<schema>", "structured_schema": self._schema}
++        )
++        return self._record(token, lambda: self._inner.invoke(input, config, **kwargs))
++
++    async def ainvoke(self, input, config=None, **kwargs):
++        token = _CTX.set(
++            {"tools": [], "tool_choice": "<schema>", "structured_schema": self._schema}
++        )
++
++        try:
++            result = await self._inner.ainvoke(input, config, **kwargs)
++        except Exception as exc:
++            from tradingagents.agents.structured import reply_text
++
++            _write(
++                {
++                    "event": "structured_result",
++                    "schema": self._schema,
++                    "ok": False,
++                    "raw_text_retained": bool(reply_text(getattr(exc, "response", None)).strip()),
++                    "error": type(exc).__name__,
++                }
++            )
++            raise
++        finally:
++            _CTX.reset(token)
++        self._record_result(result)
++        return result
++
++    def __getattr__(self, name):
++        return getattr(object.__getattribute__(self, "_inner"), name)
++
++
++# ---------------------------------------------------------------- patching
++
++
++def install(client_cls=None) -> bool:
++    """Patch a chat class. Defaults to the real client; tests pass a stand-in
++    so the same code path runs without a network call."""
++    if client_cls is None:
++        from tradingagents.llm_clients.openai_client import LocalCompatibleChatOpenAI as C
++    else:
++        C = client_cls
++
++    if getattr(C, "_probe_installed", False):
++        return False
++
++    # getattr, not attribute access: the stand-in used by the offline tests
++    # defines the pieces it cares about and nothing else.
++    orig_generate = getattr(C, "_generate", None)
++    orig_bind_tools = getattr(C, "bind_tools", None)
++    orig_structured = getattr(C, "with_structured_output", None)
++    if orig_generate is None:
++        raise AttributeError(f"{C.__name__} has no _generate to wrap")
++
++    # ---- bind_tools: remember what this binding carries, for its own lifetime
++    # ---- bind_tools: wrap so the tool list lives for this binding's own lifetime
++    def bind_tools(self, tools, **kwargs):
++        binding = orig_bind_tools(self, tools, **kwargs)
++        return _Bound(
++            binding,
++            {"tools": _tool_names(tools), "tool_choice": _choice_text(kwargs.get("tool_choice"))},
++        )
++
++    # ---- with_structured_output: the authoritative structured marker
++    def with_structured_output(self, schema, **kwargs):
++        runnable = orig_structured(self, schema, **kwargs)
++        if runnable is None:
++            return None
++        name = getattr(schema, "__name__", None) or type(schema).__name__
++        return _Structured(runnable, name)
++
++    # ---- the call itself
++    def generate(self, *args, **kwargs):
++        ctx = _CTX.get() or {}
++        messages = kwargs.get("messages")
++        if messages is None and args:
++            messages = args[0]
++        run_manager = kwargs.get("run_manager")
++        meta = dict(getattr(run_manager, "metadata", None) or {})
++        node = meta.get("langgraph_node")
++        step = meta.get("langgraph_step")
++        if node is None:
++            # The run manager does not always carry the graph metadata: an agent
++            # that calls its llm directly does not forward the config. The runtime
++            # config is the authoritative place to ask.
++            try:
++                from langgraph.config import get_config as _lg_config
++
++                cfg = _lg_config() or {}
++                cmeta = dict(cfg.get("metadata") or {})
++                node = cmeta.get("langgraph_node") or node
++                step = cmeta.get("langgraph_step") or step
++                if node is None:
++                    tags = cfg.get("tags") or []
++                    if tags:
++                        node = "tag:" + ",".join(str(x) for x in tags)
++            except Exception:
++                pass
++
++        shape = {}
++        try:
++            payload = self._get_request_payload(messages or [])
++            shape = {
++                "payload_keys": sorted(k for k in payload if k != "messages"),
++                "max_tokens": payload.get("max_tokens") or payload.get("max_completion_tokens"),
++                "reasoning_effort": payload.get("reasoning_effort"),
++                "reasoning_split": (payload.get("extra_body") or {}).get("reasoning_split"),
++                "response_format": bool(payload.get("response_format")),
++            }
++        except Exception as exc:
++            shape = {"payload_error": type(exc).__name__}
++
++        result = orig_generate(self, *args, **kwargs)
++
++        with STATE["lock"]:
++            STATE["seq"] += 1
++            seq = STATE["seq"]
++            key = node or "<no-node>"
++            STATE["node_counts"][key] = STATE["node_counts"].get(key, 0) + 1
++            occurrence = STATE["node_counts"][key]
++
++        record = {
++            "seq": seq,
++            "node": node,
++            "langgraph_step": step,
++            "call_index_for_node": occurrence,
++            "model": getattr(self, "model_name", None) or getattr(self, "model", None),
++            "req_tools": ctx.get("tools", []),
++            "req_tool_count": len(ctx.get("tools", [])),
++            "req_tool_choice": ctx.get("tool_choice", "<unset>"),
++            "structured_schema": ctx.get("structured_schema"),
++        }
++        record.update(shape)
++
++        try:
++            gens = getattr(result, "generations", None) or []
++            gen = gens[0] if gens else None
++            if isinstance(gen, (list, tuple)):
++                gen = gen[0] if gen else None
++            message = getattr(gen, "message", None) if gen is not None else None
++            body = getattr(message, "content", "") if message is not None else ""
++            if not isinstance(body, str):
++                body = str(body)
++            calls = list(getattr(message, "tool_calls", None) or []) if message is not None else []
++            info = dict(getattr(gen, "generation_info", None) or {})
++            rmeta = dict(getattr(message, "response_metadata", None) or {})
++            record["finish_reason"] = info.get("finish_reason") or rmeta.get("finish_reason")
++            record["body_chars"] = len(body)
++            record["body_head"] = body[:BODY_HEAD_CHARS]
++            record["tool_calls_returned"] = len(calls)
++            usage = (
++                rmeta.get("token_usage")
++                or (getattr(result, "llm_output", None) or {}).get("token_usage")
++                or {}
++            )
++            if usage:
++                det = usage.get("completion_tokens_details") or {}
++                record["usage"] = {
++                    "prompt": usage.get("prompt_tokens"),
++                    "completion": usage.get("completion_tokens"),
++                    "reasoning": det.get("reasoning_tokens"),
++                }
++            blank = len(body.strip()) == 0 and not calls
++            if record.get("structured_schema"):
++                record["outcome"] = "empty_reply" if blank else "structured_attempt"
++            else:
++                record["outcome"] = (
++                    "empty_reply" if blank else ("tool_call" if calls else "free_text")
++                )
++        except Exception as exc:
++            record["probe_error"] = f"{type(exc).__name__}: {exc}"
++        _write(record)
++        return result
++
++    C.bind_tools = bind_tools
++    C.with_structured_output = with_structured_output
++    C._generate = generate
++    C._probe_installed = True
++    return True
++
++
++# ---------------------------------------------------------------- reading
++
++
++def records(log: pathlib.Path | None = None) -> list[dict]:
++    log = log or STATE["log"]
++    if log is None or not pathlib.Path(log).exists():
++        return []
++    out = []
++    for line in pathlib.Path(log).read_text(encoding="utf-8").splitlines():
++        if not line.strip():
++            continue
++        try:
++            out.append(json.loads(line))
++        except Exception:
++            continue
++    return out
++
++
++def classify(log: pathlib.Path | None = None) -> dict:
++    """The three outcomes the caller cares about, counted apart."""
++    calls = [r for r in records(log) if r.get("event") != "structured_result"]
++    events = [r for r in records(log) if r.get("event") == "structured_result"]
++    struct_calls = [r for r in calls if r.get("structured_schema")]
++    empty = [r for r in calls if r.get("outcome") == "empty_reply"]
++    ok = [e for e in events if e.get("ok")]
++    failed = [e for e in events if not e.get("ok")]
++    return {
++        "calls": calls,
++        "events": events,
++        "structured_call_records": len(struct_calls),
++        "structured_attempts": len(events),
++        "structured_ok": len(ok),
++        "structured_failed": len(failed),
++        "structured_raw_retained": sum(1 for event in failed if event.get("raw_text_retained")),
++        "empty_replies": empty,
++        "tool_calls": sum(1 for r in calls if r.get("outcome") == "tool_call"),
++        "free_text": sum(1 for r in calls if r.get("outcome") == "free_text"),
++    }
++
++
++def struct_ok_or_fail(events, ok: bool) -> list:
++    return [e for e in events if bool(e.get("ok")) is ok]
+diff --git a/tradingagents/agents/analysts/fundamentals_analyst.py b/tradingagents/agents/analysts/fundamentals_analyst.py
+index 961d582..e1ed28f 100644
+--- a/tradingagents/agents/analysts/fundamentals_analyst.py
++++ b/tradingagents/agents/analysts/fundamentals_analyst.py
+@@ -9,6 +9,7 @@ from tradingagents.agents.tools import (
+     get_income_statement,
+     get_insider_transactions,
+ )
++from tradingagents.dataflows.financial_metrics import summary_from_state
+ 
+ # The tools this analyst is offered; its tool node is built from the same tuple.
+ TOOLS = (
+@@ -24,6 +25,13 @@ def create_fundamentals_analyst(llm):
+     def fundamentals_analyst_node(state):
+         current_date = state["trade_date"]
+         instrument_context = get_instrument_context_from_state(state)
++        metrics = summary_from_state(state)
++        if metrics:
++            instrument_context += (
++                "\n\n# Computed metrics from this run's tool messages\n"
++                "Use the source units and dated periods below; do not substitute "
++                "column offsets for a prior-year comparison.\n" + metrics
++            )
+ 
+         system_message = (
+             "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
+diff --git a/tradingagents/agents/managers/portfolio_manager.py b/tradingagents/agents/managers/portfolio_manager.py
+index 0537b5e..9d65f8c 100644
+--- a/tradingagents/agents/managers/portfolio_manager.py
++++ b/tradingagents/agents/managers/portfolio_manager.py
+@@ -17,7 +17,12 @@ from tradingagents.agents.context import (
+ )
+ from tradingagents.agents.rating import parse_rating
+ from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
+-from tradingagents.agents.structured import NO_EXTERNAL_TOOLS, bind_structured, invoke_structured
++from tradingagents.agents.structured import (
++    NO_EXTERNAL_TOOLS,
++    bind_structured,
++    freetext_for_reply,
++    invoke_structured_reply,
++)
+ 
+ 
+ def create_portfolio_manager(llm):
+@@ -77,12 +82,19 @@ Write these sections, in this order, starting with the rating on its own line:
+ 
+         # The typed rating is the decision; the rendered text only carries it.
+         # Read back from text, a rating the thesis quotes could replace it.
+-        decision = invoke_structured(structured_llm, prompt, "Portfolio Manager")
++        reply = invoke_structured_reply(structured_llm, prompt, "Portfolio Manager")
++        decision = reply.parsed
+         if decision is not None:
+             final_trade_decision = render_pm_decision(decision)
+             final_rating = decision.rating.value
+         else:
+-            final_trade_decision = llm.invoke(prompt).content
++            final_trade_decision = freetext_for_reply(
++                reply,
++                llm,
++                prompt,
++                "Portfolio Manager",
++                attempted=structured_llm is not None,
++            )
+             final_rating = parse_rating(final_trade_decision)
+ 
+         new_risk_debate_state = {
+diff --git a/tradingagents/agents/structured.py b/tradingagents/agents/structured.py
+index 8992e53..8a16f09 100644
+--- a/tradingagents/agents/structured.py
++++ b/tradingagents/agents/structured.py
+@@ -3,14 +3,13 @@
+ The Portfolio Manager, Trader, and Research Manager all follow the same
+ canonical pattern:
+ 
+-1. At agent creation, wrap the LLM with ``with_structured_output(Schema)``
++1. At agent creation, wrap the LLM with ``with_structured_output(Schema, include_raw=True)``
+    so the model returns a typed Pydantic instance. If the provider does
+    not support structured output (rare; mostly older Ollama models), the
+    wrap is skipped and the agent uses free-text generation instead.
+-2. At invocation, run the structured call and render the result back to
+-   markdown. If the structured call itself fails for any reason
+-   (malformed JSON from a weak model, transient provider issue), fall
+-   back to a plain ``llm.invoke`` so the pipeline never blocks.
++2. Render a successful parse; on a parse miss retain the original visible
++   answer. Only call the plain model when no original text is available, and
++   log that additional call as a new decision with an unknown original rating.
+ 
+ Centralising the pattern here keeps the agent factories small and ensures
+ all three agents log the same warnings when fallback fires.
+@@ -20,6 +19,7 @@ from __future__ import annotations
+ 
+ import logging
+ from collections.abc import Callable
++from dataclasses import dataclass
+ from typing import Any, TypeVar
+ 
+ from pydantic import BaseModel
+@@ -40,22 +40,56 @@ NO_EXTERNAL_TOOLS = (
+ 
+ 
+ def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Any | None:
+-    """Return ``llm.with_structured_output(schema)`` or ``None`` if unsupported.
++    """Bind structured output with its raw reply, or use one plain call if unsupported.
+ 
+     Logs a warning when the binding fails so the user understands the agent
+     will use free-text generation for every call instead of one-shot fallback.
+     """
+     try:
+-        return llm.with_structured_output(schema)
++        return llm.with_structured_output(schema, include_raw=True)
++    except (TypeError, ValueError) as exc:
++        # Older adapters may not expose include_raw. Binding without it cannot
++        # preserve a parse miss, so use one plain call rather than two decisions.
++        if "include_raw" not in str(exc):
++            raise
++        logger.warning("%s: raw structured output unsupported; using free text", agent_name)
++        return None
+     except (NotImplementedError, AttributeError) as exc:
+         logger.warning(
+             "%s: provider does not support with_structured_output (%s); "
+             "falling back to free-text generation",
+-            agent_name, exc,
++            agent_name,
++            exc,
+         )
+         return None
+ 
+ 
++@dataclass(frozen=True)
++class StructuredReply:
++    """The parsed value and the original message from one model invocation."""
++
++    parsed: Any = None
++    raw: Any = None
++
++
++def invoke_structured_reply(
++    structured_llm: Any | None, prompt: Any, agent_name: str
++) -> StructuredReply:
++    if structured_llm is None:
++        return StructuredReply()
++    try:
++        result = structured_llm.invoke(prompt)
++    except Exception as exc:
++        logger.warning("%s: structured invocation failed (%s)", agent_name, type(exc).__name__)
++        return StructuredReply(raw=getattr(exc, "response", None))
++    if isinstance(result, dict) and {"raw", "parsed", "parsing_error"} <= result.keys():
++        if result["parsed"] is None:
++            logger.warning("%s: structured parse miss; original reply retained", agent_name)
++        return StructuredReply(parsed=result["parsed"], raw=result["raw"])
++    # Retain compatibility for callers passing an already parsed runnable.
++    return StructuredReply(parsed=result)
++
++
+ def invoke_structured(structured_llm: Any | None, prompt: Any, agent_name: str) -> T | None:
+     """Run the structured call; ``None`` when there is none or it fails.
+ 
+@@ -63,22 +97,42 @@ def invoke_structured(structured_llm: Any | None, prompt: Any, agent_name: str)
+     invocations, a list of message dicts for chat models that take that
+     shape), so a caller can forward the same value to its free-text fallback.
+     """
+-    if structured_llm is None:
+-        return None
+-    try:
+-        result = structured_llm.invoke(prompt)
+-        if result is None:
+-            # A thinking model can answer in plain text instead of calling
+-            # the tool, leaving the parser with nothing to return. Treat it
+-            # as a structured miss and fall back, with a clear reason.
+-            raise ValueError("structured output returned no parsed result")
+-        return result
+-    except Exception as exc:
++    return invoke_structured_reply(structured_llm, prompt, agent_name).parsed
++
++
++def reply_text(message: Any) -> str:
++    """Read visible text only; never turn tool arguments or reasoning into prose."""
++    content = getattr(message, "content", None)
++    if isinstance(content, str):
++        return content
++    if isinstance(content, list):
++        return "".join(
++            block.get("text", "")
++            for block in content
++            if isinstance(block, dict) and block.get("type") in ("text", "output_text")
++        )
++    return ""
++
++
++def freetext_for_reply(
++    reply: StructuredReply,
++    plain_llm: Any,
++    prompt: Any,
++    agent_name: str,
++    *,
++    attempted: bool,
++) -> str:
++    text = reply_text(reply.raw)
++    if text.strip():
++        logger.info("%s: using original text after parse miss; no second model call", agent_name)
++        return text
++    if attempted:
+         logger.warning(
+-            "%s: structured-output invocation failed (%s); retrying once as free text",
+-            agent_name, exc,
++            "%s: no usable original text; free-text call is a new decision, "
++            "original rating unknown",
++            agent_name,
+         )
+-        return None
++    return reply_text(plain_llm.invoke(prompt))
+ 
+ 
+ def invoke_structured_or_freetext(
+@@ -89,7 +143,13 @@ def invoke_structured_or_freetext(
+     agent_name: str,
+ ) -> str:
+     """Run the structured call and render to markdown; fall back to free-text on any failure."""
+-    result = invoke_structured(structured_llm, prompt, agent_name)
+-    if result is not None:
+-        return render(result)
+-    return plain_llm.invoke(prompt).content
++    reply = invoke_structured_reply(structured_llm, prompt, agent_name)
++    if reply.parsed is not None:
++        return render(reply.parsed)
++    return freetext_for_reply(
++        reply,
++        plain_llm,
++        prompt,
++        agent_name,
++        attempted=structured_llm is not None,
++    )
+diff --git a/tradingagents/dataflows/financial_metrics.py b/tradingagents/dataflows/financial_metrics.py
+new file mode 100644
+index 0000000..5915a2f
+--- /dev/null
++++ b/tradingagents/dataflows/financial_metrics.py
+@@ -0,0 +1,252 @@
++"""Deterministic metrics from this run's statement messages, with source units."""
++
++from __future__ import annotations
++
++import csv
++import io
++import math
++import re
++from dataclasses import dataclass, field
++from datetime import date
++from typing import Any
++
++from langchain_core.messages import AIMessage, ToolMessage
++
++_DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:\s*\((\d+) months?\))?$")
++_TITLE = re.compile(
++    r"^# (Income Statement|Cash Flow(?: Statement)?)(?: data)? for (\S+) \(([^)]+)\)"
++)
++_UNIT = re.compile(r"\b([A-Z]{3}) in (millions|thousands|units)\b")
++_ALIASES = {
++    "Revenue": ("Revenue", "Total Revenue"),
++    "Gross Profit": ("Gross Profit",),
++    "Net Income": ("Net Income", "Net Income Common Stockholders"),
++    "Operating Cash Flow": (
++        "Operating Cash Flow",
++        "Cash Flow From Continuing Operating Activities",
++        "Total Cash From Operating Activities",
++        "Cash Flowsfromusedin Operating Activities Direct",
++    ),
++    "Free Cash Flow": ("Free Cash Flow",),
++}
++
++
++@dataclass
++class Period:
++    label: str
++    end: date
++    months: int | None
++    values: dict[str, float | None] = field(default_factory=dict)
++
++
++@dataclass
++class Statement:
++    frequency: str | None = None
++    currency: str | None = None
++    scale: str | None = None
++    periods: list[Period] = field(default_factory=list)
++
++    @property
++    def unit(self) -> str:
++        if self.currency and self.scale:
++            return f"{self.currency} in {self.scale}"
++        return "source units (currency/scale not stated)"
++
++
++def parse(text: str | None) -> Statement:
++    """Parse the multiline tool CSV; flattened display logs are not a data source."""
++    statement = Statement()
++    lines = (text or "").splitlines()
++    for line in lines:
++        title = _TITLE.match(line.strip())
++        if title:
++            statement.frequency = title[3].lower()
++        unit = _UNIT.search(line)
++        if unit and line.startswith("#"):
++            statement.currency, statement.scale = unit.groups()
++    body = "\n".join(line for line in lines if line.strip() and not line.startswith("#"))
++    try:
++        rows = list(csv.reader(io.StringIO(body)))
++    except csv.Error:
++        return statement
++    if not rows or len(rows[0]) < 2:
++        return statement
++    columns: dict[int, Period] = {}
++    for index, cell in enumerate(rows[0][1:], 1):
++        match = _DATE.fullmatch(cell.strip())
++        if not match:
++            continue
++        try:
++            end = date.fromisoformat(match[1])
++        except ValueError:
++            continue
++        months = int(match[2]) if match[2] else None
++        period = Period(cell.strip(), end, months)
++        columns[index] = period
++        statement.periods.append(period)
++    for row in rows[1:]:
++        if not row:
++            continue
++        name = row[0].strip()
++        for index, period in columns.items():
++            value = None
++            if index < len(row):
++                try:
++                    number = float(row[index])
++                    value = number if math.isfinite(number) else None
++                except ValueError:
++                    pass
++            period.values[name] = value
++    return statement
++
++
++def _value(period: Period, row: str) -> float | None:
++    for name in _ALIASES[row]:
++        value = period.values.get(name)
++        if value is not None:
++            return value
++    return None
++
++
++def _period_text(period: Period, statement: Statement) -> str:
++    if period.months:
++        return f"{period.months}-month cumulative as filed, ending {period.end}; start not supplied"
++    return f"{statement.frequency or 'unknown frequency'} per source, ending {period.end}; start not supplied"
++
++
++def _year_ago(period: Period, statement: Statement) -> Period | None:
++    candidates = [
++        candidate
++        for candidate in statement.periods
++        if candidate.end.year == period.end.year - 1
++        and candidate.end.month == period.end.month
++        and abs(candidate.end.day - period.end.day) <= 7
++        and candidate.months == period.months
++    ]
++    return candidates[0] if len(candidates) == 1 else None
++
++
++def _calendar_pair(statement: Statement, year: int, row: str) -> tuple[float, str] | None:
++    # Only a source explicitly labelling single quarters may be summed. An
++    # Apple March 6-month column is never a calendar half-year or a quarter.
++    if statement.frequency != "quarterly":
++        return None
++    pair = []
++    for month, day in ((3, 31), (6, 30)):
++        candidates = [
++            p
++            for p in statement.periods
++            if p.end == date(year, month, day) and p.months in (None, 3)
++        ]
++        if len(candidates) != 1 or _value(candidates[0], row) is None:
++            return None
++        pair.append(candidates[0])
++    total = sum(_value(p, row) for p in pair)
++    return total, " + ".join(p.label for p in pair)
++
++
++def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
++    """Never guess currency, scale, period start, or a missing prior-year fact."""
++    lines: list[str] = []
++    income = parse(income_csv)
++    cash = parse(cash_csv)
++    if income.periods:
++        last = max(income.periods, key=lambda p: (p.end, -(p.months or 3)))
++        lines.append(f"## Income statement -- {_period_text(last, income)}; {income.unit}")
++        revenue, gross, net = (
++            _value(last, row) for row in ("Revenue", "Gross Profit", "Net Income")
++        )
++        for label, value in (("Revenue", revenue), ("Net income", net)):
++            lines.append(
++                f"- {label}: {value:,.2f} ({income.unit})"
++                if value is not None
++                else f"- {label}: NOT AVAILABLE (row missing/empty)"
++            )
++        if revenue is not None and revenue != 0 and gross is not None:
++            lines.append(f"- Gross margin (Gross Profit / Revenue): {100 * gross / revenue:.2f}%")
++        previous = _year_ago(last, income)
++        prior = _value(previous, "Net Income") if previous else None
++        if net is not None and prior not in (None, 0):
++            lines.append(
++                f"- Net income YoY against {previous.label}: {100 * (net - prior) / abs(prior):+.2f}%; matched by date and duration, never column position"
++            )
++        else:
++            lines.append(
++                "- Net income YoY: NOT AVAILABLE (no unambiguous matching prior-year value)"
++            )
++    elif income_csv:
++        lines.append("## Income statement: NOT AVAILABLE (no parseable multiline statement)")
++    if cash.periods:
++        lines.append(f"## Cash flow -- {cash.unit}; source-labelled periods only")
++        last = max(cash.periods, key=lambda p: (p.end, -(p.months or 3)))
++        lines.append(f"- Latest column: {_period_text(last, cash)}")
++        for row in ("Operating Cash Flow", "Free Cash Flow"):
++            value = _value(last, row)
++            lines.append(
++                f"- {row}, {last.label}: {value:,.2f} ({cash.unit})"
++                if value is not None
++                else f"- {row}: NOT AVAILABLE (row missing/empty)"
++            )
++            for year in sorted({p.end.year for p in cash.periods})[-2:]:
++                cumulative = [p for p in cash.periods if p.end.year == year and p.months == 6]
++                for period in cumulative:
++                    if period is last:
++                        continue
++                    value = _value(period, row)
++                    if value is not None:
++                        lines.append(
++                            f"- {row}, {_period_text(period, cash)}: {value:,.2f} ({cash.unit}); used as filed, not re-summed"
++                        )
++                pair = _calendar_pair(cash, year, row)
++                if pair:
++                    lines.append(
++                        f"- {row}, sum of source quarterly columns {pair[1]}: {pair[0]:,.2f} ({cash.unit}); period starts not supplied"
++                    )
++    elif cash_csv:
++        lines.append("## Cash flow: NOT AVAILABLE (no parseable multiline statement)")
++    return "\n".join(lines)
++
++
++def summary_from_state(state: dict[str, Any]) -> str:
++    """Use matched tool calls/results in state only; never reopen a shared log."""
++    ticker = str(state.get("company_of_interest", "")).upper()
++    as_of = state.get("trade_date")
++    if not ticker or not as_of:
++        return ""
++    calls: dict[str, dict] = {}
++    statements: dict[str, str] = {}
++    allowed = {"get_income_statement": "income", "get_cashflow": "cash"}
++    for message in state.get("messages", []):
++        if isinstance(message, AIMessage):
++            calls.update({call["id"]: call for call in message.tool_calls})
++        if not isinstance(message, ToolMessage):
++            continue
++        call = calls.get(message.tool_call_id)
++        if not call or call.get("name") not in allowed:
++            continue
++        args = call.get("args", {})
++        if str(args.get("ticker", "")).upper() != ticker:
++            continue
++        if args.get("curr_date") not in (None, as_of):
++            continue
++        kind = allowed[call["name"]]
++        statements.pop(kind, None)
++        if message.status == "error":
++            continue
++        text = message.content
++        if not isinstance(text, str):
++            continue
++        title = _TITLE.match(text.splitlines()[0]) if text.splitlines() else None
++        if not title or title[2].upper() != ticker:
++            continue
++        if (call["name"] == "get_income_statement") != (title[1] == "Income Statement"):
++            continue
++        filed = re.search(r"filed on or before (\d{4}-\d{2}-\d{2})", text)
++        if filed and filed[1] != as_of:
++            continue
++        statement = parse(text)
++        if any(p.end.isoformat() > as_of for p in statement.periods):
++            continue
++        # Last result of the same tool in the current state wins, even if empty.
++        statements[kind] = text
++    return build_summary(statements.get("income"), statements.get("cash"))
