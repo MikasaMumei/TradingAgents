@@ -1,6 +1,21 @@
 # 上游补丁
 
-> 历史说明：下文记录云端 v0.5.2 / `8b22d43d` 的行情补丁，不是当前 Windows v0.6.0 的维护说明。Windows 的实际源码、原始回答保留和财务摘要修复以 [Windows 维护说明](../docs/windows-maintenance.md)及 `0002-windows-runtime-guards.patch` 为准。不要把 0001 直接应用到 Windows 0.6.0；本页旧路径、行数和“未提交”状态仅描述当时快照。
+## 当前 Windows 版本
+
+Windows `D:\TradingAgents` 以 v0.6.0 / `1394a3f` 为上游基线，维护分支 `fix/windows-runtime-guards` 的初始已发布维护提交为 `ce319ff`；后续交付以Git历史为准。
+
+- `0002-windows-runtime-guards.patch`：基于1394a3f的原文保留、财务摘要和隔离验证修复；完整维护工具已纳入ce319ff。
+- `0003-injected-financial-context-report-path.patch`：基于ce319ff，修复状态注入ticker、报告路径传递、逐期间财务事实和现金流期间约束。
+- `0004-settled-market-full-window.patch`：基于ce319ff，修复预先导入的行情/结算引用、完整SMA窗口校验和同股票缓存并发事务。与0003路径不重叠，可依次应用。
+- `0005-financial-semantics-review.patch`：前提为ce319ff已应用0003、0004；增加财务定义、有限筛查、原文复核提示、REVIEW信号与记忆闸门。10个源码/测试路径，不能独立对ce319ff应用。
+
+0003、0004已经应用于当前Windows工作区，不要再次应用。两份补丁均在干净ce319ff中检查、应用并完成86项回归，源码文本与当时运行版本一致。详细记录见[四股验收](../docs/four-stock-acceptance-20261009.md)和[Windows维护](../docs/windows-maintenance.md)。
+
+随后0005也已应用。干净ce319ff依次应用0003、0004、0005后199项相关回归通过；实际运行源码文本与0005覆盖的10个路径一致。0005为35302 bytes，SHA256 `fcd69f57b767e6135abc73d687c40300b56304ea60188dc765b618b5a11f7c50`。这29文件的交付于2026-10-09获得用户授权，实际提交/推送以Git历史为准。旧完整模型报告生成于0005之前，不能作为新语义约束的真实模型验收。边界和DSH审阅见[财务语义说明](../docs/financial-semantics-20261009.md)。
+
+下文保留旧云端v0.5.2 / 0001的历史说明；其路径、未提交状态和MD5只描述当时快照，不代表当前Windows仓库。
+
+## 历史云端版本（0001）
 
 本目录记录对 `TradingAgents/`（upstream）的**全部**改动。
 本文是补丁的**唯一技术真相源**——缺陷台账、数据闸门验证表、口径说明只在这里维护一份。

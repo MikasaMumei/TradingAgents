@@ -17,7 +17,7 @@ from stockstats import wrap
 
 from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.symbols import normalize_symbol
-from tradingagents.dataflows.vendors.yahoo.ohlcv import load_ohlcv
+from tradingagents.dataflows.vendors.yahoo.ohlcv import indicator_ready_rows, load_ohlcv
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
 DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
@@ -79,6 +79,9 @@ def build_verified_market_snapshot(
     selected = tuple(indicators or DEFAULT_SNAPSHOT_INDICATORS)
     indicator_values: dict[str, str] = {}
     for name in selected:
+        if not indicator_ready_rows(df, name).iloc[-1]:
+            indicator_values[name] = "N/A (insufficient history for full indicator window)"
+            continue
         try:
             stock_df[name]  # triggers stockstats calculation
             indicator_values[name] = _fmt(stock_df.iloc[-1][name])
@@ -95,6 +98,8 @@ def build_verified_market_snapshot(
         "",
         f"- Requested analysis date: {as_of_date}",
         f"- Latest trading row used: {latest_date}",
+        f"- Historical trading rows available: {len(df)}",
+        "- An unavailable full-window SMA must not be replaced with a partial-window average or company metadata.",
         "- Rows after the requested analysis date are excluded before verification.",
         "",
         "### Latest verified OHLCV row",

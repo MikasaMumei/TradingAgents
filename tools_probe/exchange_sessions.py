@@ -308,6 +308,12 @@ def install() -> bool:
     orig_load = ohlcv.load_ohlcv
 
     def load_ohlcv(symbol, as_of_date, fill_gaps=True, **kw):
+        # The native loader and this guard share a reentrant cache lock. Keep
+        # refresh/removal in the same transaction as the initial read.
+        with ohlcv.cache_lock(symbol):
+            return load_locked(symbol, as_of_date, fill_gaps=fill_gaps, **kw)
+
+    def load_locked(symbol, as_of_date, fill_gaps=True, **kw):
         frame = orig_load(symbol, as_of_date, fill_gaps=fill_gaps, **kw)
         if frame is None or getattr(frame, "empty", True):
             return frame
@@ -344,6 +350,13 @@ def install() -> bool:
 
     market.get_YFin_data_online = get_YFin_data_online
 
+    # The router imports its callable before this runtime filter is installed.
+    # Update the actual vendor dispatch entry, not only the module attribute.
+    from tradingagents.dataflows import router
+
+    if router.VENDOR_METHODS["get_stock_data"]["yfinance"] is orig_online:
+        router.VENDOR_METHODS["get_stock_data"]["yfinance"] = get_YFin_data_online
+
     orig_closes = market.get_closes
 
     def get_closes(symbol, start_date, end_date, *a, **kw):
@@ -355,6 +368,11 @@ def install() -> bool:
         return kept[name] if name in kept.columns else kept.iloc[:, 0]
 
     market.get_closes = get_closes
+
+    from tradingagents.memory import settlement
+
+    if settlement.get_closes is orig_closes:
+        settlement.get_closes = get_closes
 
     ohlcv._exchange_settle_patched = True
     return True

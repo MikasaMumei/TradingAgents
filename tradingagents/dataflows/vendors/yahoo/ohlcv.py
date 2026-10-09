@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 
 import pandas as pd
 import yfinance as yf
@@ -22,6 +23,31 @@ MAX_OHLCV_STALE_DAYS = 10
 # up today's close soon after it publishes, long enough that a day with no bar
 # at all (weekend, holiday) cannot trigger a download on every call.
 OHLCV_CACHE_TTL_SECONDS = 900
+
+_CACHE_LOCKS: dict[str, threading.RLock] = {}
+_CACHE_LOCKS_GUARD = threading.Lock()
+
+
+def cache_lock(symbol: str) -> threading.RLock:
+    """Serialize readers, replacement and guard refresh for one cache file."""
+    safe = safe_ticker_component(normalize_symbol(symbol))
+    path = os.path.normcase(os.path.abspath(os.path.join(
+        get_config()["data_cache_dir"], f"{safe}-YFin-data.csv"
+    )))
+    with _CACHE_LOCKS_GUARD:
+        return _CACHE_LOCKS.setdefault(path, threading.RLock())
+
+
+def indicator_ready_rows(data: pd.DataFrame, indicator: str) -> pd.Series:
+    """Fixed-window SMAs require a complete window of observed close values."""
+    window = {"close_50_sma": 50, "close_200_sma": 200}.get(indicator)
+    if window is None:
+        return pd.Series(True, index=data.index)
+    column = "Close" if "Close" in data.columns else "close"
+    valid = pd.to_numeric(data[column], errors="coerce").replace(
+        [float("inf"), float("-inf")], float("nan")
+    ).notna()
+    return valid.rolling(window, min_periods=window).sum().eq(window)
 
 
 def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
@@ -159,6 +185,12 @@ def _cache_is_fresh(data_file, as_of_dt, now) -> bool:
 
 
 def load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataFrame:
+    """Load one symbol under its cache lock, including reads and replacement."""
+    with cache_lock(symbol):
+        return _load_ohlcv(symbol, as_of_date, fill_gaps)
+
+
+def _load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataFrame:
     """Fetch OHLCV data with caching, filtered to prevent look-ahead bias.
 
     Downloads 5 years of data up to today and caches per symbol. On
@@ -255,5 +287,3 @@ def load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataF
     _assert_ohlcv_not_stale(data, as_of_date, symbol, canonical)
 
     return data
-
-

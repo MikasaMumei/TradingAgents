@@ -62,4 +62,8 @@ python3 /Users/chasexi/TradingAgents/integrations/dsh-bridge/bridge.py \
 
 ## 版本管理
 
-Windows 仓库的 `git status` 已能看到 `integrations/`，`bridge.py` 未被忽略。当前文件尚未 commit 或 push，因此还没有提交历史；代码已放在可纳入仓库的位置，运行记录与凭据不纳入 Git。
+协作入口已纳入 `ce319ff`，并经用户授权推送至 `MikasaMumei/TradingAgents` 的 `fix/windows-runtime-guards` 分支。运行记录与凭据不纳入 Git。
+
+2026-10-09继续通过同一会话只读审阅真实苹果报告。`20261008T172551Z-b3ed8a97`达到输出上限、无可见回复，计为失败；`20261008T172728Z-1486eeff`恢复此前已读文件后给出非空审阅，turn completed、idle、退出0。审阅意见仍由Codex对照实际工具数据核验，没有授予DSH写入或shell权限。TradingAgents整体运行结果见[四股验收](../../docs/four-stock-acceptance-20261009.md)。
+
+`20261009T051752Z-6638c656`只读审阅0005财务语义源码与说明，非空回复、turn completed、idle、退出0。确认同日现金/债务、原文保留及REVIEW评级优先级，并指出已知有限筛查边界。Codex纠正其“SEC路径恒定命中”表述：还须有量化净现金文字才触发。完整记录与验证范围见[财务语义说明](../../docs/financial-semantics-20261009.md)。该交叉审阅不等于模型效果验收。

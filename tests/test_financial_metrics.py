@@ -52,13 +52,21 @@ def test_aapl_date_alignment_and_explicit_units():
     assert "2026H1" not in output
 
 
-def test_moutai_sums_quarters_with_unknown_currency_not_usd():
+def test_moutai_keeps_undated_duration_cash_columns_and_unknown_units():
     output = build_summary(FIXTURES["600519.SS::fin_income"], FIXTURES["600519.SS::fin_cashflow"])
-    assert "11,523,065,222.10" in output
-    assert "69,858,607,366.78" in output
-    assert "13,119,061,031.33" in output  # Operating-CF alias must be found.
+    assert "Free Cash Flow=3,614,973,924.53" in output
+    assert "Free Cash Flow=43,553,507,681.54" in output
+    assert "8,809,195,646.38" in output
+    assert "sum of source quarterly columns" not in output
     assert "source units (currency/scale not stated)" in output
     assert "USD" not in output and "CNY" not in output
+
+
+def test_cash_columns_are_summed_only_with_explicit_three_month_durations():
+    csv = "# Cash Flow data for X (quarterly)\n,2025-03-31 (3 months),2025-06-30 (3 months)\nOperating Cash Flow,10,20\nFree Cash Flow,8,16\n"
+    output = build_summary(None, csv)
+    assert "sum of source quarterly columns 2025-03-31 (3 months) + 2025-06-30 (3 months): 30.00" in output
+    assert "sum of source quarterly columns" not in build_summary(None, csv.replace(" (3 months)", ""))
 
 
 def test_empty_state_does_not_read_old_log(tmp_path, monkeypatch):
@@ -77,6 +85,68 @@ def test_wrong_ticker_and_previous_asof_are_rejected():
     assert summary_from_state(current) == ""
     current = state(day="2026-10-07", income=FIXTURES["AAPL::fin_income"])
     assert summary_from_state(current) == ""
+
+
+def test_state_injected_ticker_is_not_required_in_model_arguments():
+    current = state(income=FIXTURES["AAPL::fin_income"])
+    current["messages"][0].tool_calls[0]["args"].pop("ticker")
+    output = summary_from_state(current)
+    assert "109,417.00" in output and "29,789.00" in output
+    assert "50.06%" in output and "+27.12%" in output
+    current["company_of_interest"] = "600519.SS"
+    assert summary_from_state(current) == ""  # The result title still must match.
+
+
+def test_source_aligned_values_keep_the_explicit_eps_row_unit():
+    text = (
+        "# Income Statement for AAPL (quarterly), USD in millions\n"
+        ",2025-06-28,2026-06-27\nRevenue,85777,109417\n"
+        "Gross Profit,39678,54770\nOperating Income,25352,35695\n"
+        "Net Income,23434,29789\nDiluted EPS (USD/shares),1.57,2.02\n"
+    )
+    output = build_summary(text, None)
+    assert "Gross profit: 54,770.00 (USD in millions)" in output
+    assert "Operating income: 35,695.00 (USD in millions)" in output
+    assert "Diluted EPS, 2026-06-27: 2.02 USD/share" in output
+    assert "USD/share" not in build_summary(text.replace(" (USD/shares)", ""), None)
+
+
+def test_production_subgraph_injects_ticker_and_rebuilds_metrics(monkeypatch):
+    from tradingagents.agents import tools
+    from tradingagents.graph.analyst_execution import build_analyst_execution_plan
+    from tradingagents.graph.setup import _analyst_graph
+
+    requests = []
+
+    def vendor(tool, ticker, frequency, day):
+        requests.append((tool, ticker, frequency, day))
+        key = "AAPL::fin_income" if tool == "get_income_statement" else "AAPL::fin_cashflow"
+        return FIXTURES[key]
+
+    monkeypatch.setattr(tools, "route_to_vendor", vendor)
+    first = AIMessage(
+        content="",
+        tool_calls=[
+            {"name": tool, "id": tool, "args": {"freq": "quarterly"}}
+            for tool in ("get_income_statement", "get_cashflow")
+        ],
+    )
+    model = OfflineChatModel(responses=[first, AIMessage(content="Grounded report")])
+    spec = build_analyst_execution_plan(["fundamentals"]).specs[0]
+    graph = _analyst_graph(spec, create_fundamentals_analyst(model), max_tool_rounds=20)
+    initial = state()
+    initial["messages"] = [HumanMessage(content="Analyze AAPL")]
+    result = graph.invoke(initial)
+    assert result["fundamentals_report"].startswith("Grounded report\n")
+    assert "financial-semantics: LIMITED_CHECK" in result["fundamentals_report"]
+    assert set(requests) == {
+        ("get_income_statement", "AAPL", "quarterly", "2026-10-08"),
+        ("get_cashflow", "AAPL", "quarterly", "2026-10-08"),
+    }
+    prompt = model.prompts[1][0].content
+    assert "109,417.00" in prompt and "29,789.00" in prompt
+    assert "50.06%" in prompt and "+27.12%" in prompt
+    assert model.calls == 2
 
 
 def test_tool_call_date_must_match_active_run():
@@ -133,9 +203,41 @@ def test_flattened_log_is_not_guessed_back_into_csv():
 def test_latest_cumulative_cashflow_is_printed_once():
     text = "# Cash Flow Statement for AAPL (quarterly), USD in millions\n,2026-03-28 (6 months)\nOperating Cash Flow,12345\n"
     output = build_summary(None, text)
-    assert output.count("12,345.00") == 1
+    assert output.count("- Operating Cash Flow, 2026-03-28 (6 months): 12,345.00") == 1
+    assert "Operating Cash Flow=12,345.00" in output
     assert "6-month cumulative as filed" in output
     assert "H1" not in output
+
+
+def test_dated_facts_preserve_missing_quarters_and_row_alignment():
+    text = "# Income Statement for AAPL (quarterly), USD in millions\n,2025-12-27,2026-06-27\nRevenue,143756,109417\nNet Income,42097,29789\n"
+    output = build_summary(text, None)
+    assert "2025-12-27: Revenue=143,756.00; Net Income=42,097.00" in output
+    assert "2026-06-27: Revenue=109,417.00; Net Income=29,789.00" in output
+    assert "2026-03-28" not in output and "2025-09-27" not in output
+
+
+def test_balance_sheet_requires_matched_tool_type_and_title():
+    text = "# Balance Sheet for AAPL (quarterly), USD in millions\n,2026-06-27\nTotal Assets,383266\nStockholders Equity,107520\n"
+    current = state()
+    current["messages"] = [
+        AIMessage(content="", tool_calls=[
+            {"name": "get_balance_sheet", "id": "balance", "args": {"freq": "quarterly"}}
+        ]),
+        ToolMessage(content=text, name="get_balance_sheet", tool_call_id="balance"),
+    ]
+    assert "Total Assets=383,266.00; Stockholders Equity=107,520.00" in summary_from_state(current)
+    current["messages"][0].tool_calls[0]["name"] = "get_cashflow"
+    assert summary_from_state(current) == ""
+
+
+def test_source_facts_keep_only_recent_eight_columns():
+    dates = [f"{year}-12-31" for year in range(2015, 2027)]
+    text = "# Income Statement for AAPL (annual)\n," + ",".join(dates) + "\nRevenue," + ",".join(str(y) for y in range(12))
+    output = build_summary(text, None)
+    assert "2015-12-31:" not in output and "2018-12-31:" not in output
+    assert "2019-12-31: Revenue=4.00" in output
+    assert "2026-12-31: Revenue=11.00" in output
 
 
 def test_csv_parser_failure_degrades_to_unavailable(monkeypatch):
@@ -162,7 +264,8 @@ def test_real_fundamentals_node_receives_metrics_on_second_round():
     second = state(income=FIXTURES["AAPL::fin_income"])
     second["messages"] = [initial["messages"][0]] + second["messages"]
     result = node(second)
-    assert result["fundamentals_report"] == "Evidence-based report"
+    assert result["fundamentals_report"].startswith("Evidence-based report\n")
+    assert result["messages"][0].content == "Evidence-based report"
     assert "109,417.00" in model.prompts[1][0].content
     assert "50.06%" in model.prompts[1][0].content
     assert "+27.12%" in model.prompts[1][0].content

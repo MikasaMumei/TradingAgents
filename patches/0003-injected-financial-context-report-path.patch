@@ -1,0 +1,490 @@
+diff --git a/cli/main.py b/cli/main.py
+index 7c13aca..a80463d 100644
+--- a/cli/main.py
++++ b/cli/main.py
+@@ -86,7 +86,7 @@ def analyze(
+ 
+     try:
+         flags = {"ticker": ticker, "date": date, "analysts": analysts, "save": save, "show": show, "html": html}
+-        run_analysis(checkpoint=checkpoint, portfolio=portfolio_context, flags=flags)
++        return run_analysis(checkpoint=checkpoint, portfolio=portfolio_context, flags=flags)
+     except _NO_CONSOLE_ERRORS:
+         # A terminal with no console buffer cannot host the interactive prompts.
+         # Emit one actionable line on stderr instead of a prompt_toolkit
+diff --git a/cli/run.py b/cli/run.py
+index 77bf955..071dc3c 100644
+--- a/cli/run.py
++++ b/cli/run.py
+@@ -384,7 +384,7 @@ def run_analysis(checkpoint: bool | None = None, portfolio=None, flags=None):
+         )
+     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
+ 
+-    _offer_reports(final_state, graph, selections["ticker"],
++    return _offer_reports(final_state, graph, selections["ticker"],
+                    save=flags.get("save"), show=flags.get("show"), html=flags.get("html"))
+ 
+ 
+@@ -429,6 +429,7 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
+     answering the save question at the prompt is also asked about the page and
+     offered to open it; a run whose flags answer the save question asks neither.
+     """
++    saved_path = None
+     asked = save is None
+     if asked:
+         save = typer.prompt("Save report?", default="Y").strip().upper() in ("Y", "YES", "")
+@@ -447,6 +448,7 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
+         try:
+             report_file = graph.save_reports(final_state, ticker, save_path, html=html)
+             saved = True
++            saved_path = save_path.resolve()
+             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
+             console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+         except Exception as e:
+@@ -461,3 +463,4 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
+         show = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper() in ("Y", "YES", "")
+     if show:
+         display_complete_report(final_state)
++    return saved_path
+diff --git a/tests/test_cli_headless.py b/tests/test_cli_headless.py
+index a800ecf..593a589 100644
+--- a/tests/test_cli_headless.py
++++ b/tests/test_cli_headless.py
+@@ -2,6 +2,7 @@
+ terminal stops up front, naming what to set, instead of waiting on a prompt."""
+ 
+ import datetime
++from pathlib import Path
+ 
+ import pytest
+ import typer
+@@ -112,9 +113,10 @@ def test_save_and_show_answer_the_questions_after_the_run(monkeypatch, tmp_path)
+     graph.run_settings = lambda: {}
+     state = {"market_report": "M", "final_trade_decision": "**Rating**: Hold"}
+ 
+-    run._offer_reports(state, graph, "NVDA", save=True, show=False)
++    saved_path = run._offer_reports(state, graph, "NVDA", save=True, show=False)
+ 
+     assert list(tmp_path.glob("reports/NVDA_*/complete_report.md"))
++    assert (saved_path / "complete_report.md").is_file()
+     assert shown == []
+ 
+ 
+@@ -242,6 +244,43 @@ def _report_graph(tmp_path):
+ STATE = {"market_report": "M", "final_trade_decision": "**Rating**: Hold"}
+ 
+ 
++@pytest.mark.unit
++def test_failed_or_declined_save_returns_no_report_path(monkeypatch, tmp_path):
++    graph = _report_graph(tmp_path)
++
++    def fail(*args, **kwargs):
++        raise OSError("Save failed")
++
++    monkeypatch.setattr(graph, "save_reports", fail)
++    assert run._offer_reports(STATE, graph, "NVDA", save=True, show=False) is None
++    assert run._offer_reports(STATE, graph, "NVDA", save=False, show=False) is None
++
++
++@pytest.mark.unit
++def test_guard_uses_callback_path_even_when_display_wraps(monkeypatch, tmp_path):
++    from cli import main
++
++    monkeypatch.syspath_prepend(str(Path(__file__).parents[1] / "tools_probe"))
++    import guarded_run
++
++    expected = tmp_path / ("long directory name " * 6)
++
++    def finish(**kwargs):
++        print("Report saved to: truncated\\nrest of display path")
++        return expected
++
++    monkeypatch.setattr(main, "run_analysis", finish)
++    report_dir, failed = guarded_run._run_cli(["--ticker", "AAPL", "--save", "--no-show"])
++    assert report_dir == str(expected)
++    assert not failed
++
++    def fail(**kwargs):
++        raise typer.Exit(code=1)
++
++    monkeypatch.setattr(main, "run_analysis", fail)
++    assert guarded_run._run_cli(["--ticker", "AAPL"]) == (None, True)
++
++
+ @pytest.mark.unit
+ def test_a_saved_report_includes_the_html_page_unless_declined(monkeypatch, tmp_path):
+     monkeypatch.setattr(run, "display_complete_report", lambda state: None)
+diff --git a/tests/test_financial_metrics.py b/tests/test_financial_metrics.py
+index 31a777f..50ad1d3 100644
+--- a/tests/test_financial_metrics.py
++++ b/tests/test_financial_metrics.py
+@@ -52,15 +52,23 @@ def test_aapl_date_alignment_and_explicit_units():
+     assert "2026H1" not in output
+ 
+ 
+-def test_moutai_sums_quarters_with_unknown_currency_not_usd():
++def test_moutai_keeps_undated_duration_cash_columns_and_unknown_units():
+     output = build_summary(FIXTURES["600519.SS::fin_income"], FIXTURES["600519.SS::fin_cashflow"])
+-    assert "11,523,065,222.10" in output
+-    assert "69,858,607,366.78" in output
+-    assert "13,119,061,031.33" in output  # Operating-CF alias must be found.
++    assert "Free Cash Flow=3,614,973,924.53" in output
++    assert "Free Cash Flow=43,553,507,681.54" in output
++    assert "8,809,195,646.38" in output
++    assert "sum of source quarterly columns" not in output
+     assert "source units (currency/scale not stated)" in output
+     assert "USD" not in output and "CNY" not in output
+ 
+ 
++def test_cash_columns_are_summed_only_with_explicit_three_month_durations():
++    csv = "# Cash Flow data for X (quarterly)\n,2025-03-31 (3 months),2025-06-30 (3 months)\nOperating Cash Flow,10,20\nFree Cash Flow,8,16\n"
++    output = build_summary(None, csv)
++    assert "sum of source quarterly columns 2025-03-31 (3 months) + 2025-06-30 (3 months): 30.00" in output
++    assert "sum of source quarterly columns" not in build_summary(None, csv.replace(" (3 months)", ""))
++
++
+ def test_empty_state_does_not_read_old_log(tmp_path, monkeypatch):
+     monkeypatch.chdir(tmp_path)
+     log = tmp_path / "data/logs/AAPL/2026-10-08/message_tool.log"
+@@ -79,6 +87,67 @@ def test_wrong_ticker_and_previous_asof_are_rejected():
+     assert summary_from_state(current) == ""
+ 
+ 
++def test_state_injected_ticker_is_not_required_in_model_arguments():
++    current = state(income=FIXTURES["AAPL::fin_income"])
++    current["messages"][0].tool_calls[0]["args"].pop("ticker")
++    output = summary_from_state(current)
++    assert "109,417.00" in output and "29,789.00" in output
++    assert "50.06%" in output and "+27.12%" in output
++    current["company_of_interest"] = "600519.SS"
++    assert summary_from_state(current) == ""  # The result title still must match.
++
++
++def test_source_aligned_values_keep_the_explicit_eps_row_unit():
++    text = (
++        "# Income Statement for AAPL (quarterly), USD in millions\n"
++        ",2025-06-28,2026-06-27\nRevenue,85777,109417\n"
++        "Gross Profit,39678,54770\nOperating Income,25352,35695\n"
++        "Net Income,23434,29789\nDiluted EPS (USD/shares),1.57,2.02\n"
++    )
++    output = build_summary(text, None)
++    assert "Gross profit: 54,770.00 (USD in millions)" in output
++    assert "Operating income: 35,695.00 (USD in millions)" in output
++    assert "Diluted EPS, 2026-06-27: 2.02 USD/share" in output
++    assert "USD/share" not in build_summary(text.replace(" (USD/shares)", ""), None)
++
++
++def test_production_subgraph_injects_ticker_and_rebuilds_metrics(monkeypatch):
++    from tradingagents.agents import tools
++    from tradingagents.graph.analyst_execution import build_analyst_execution_plan
++    from tradingagents.graph.setup import _analyst_graph
++
++    requests = []
++
++    def vendor(tool, ticker, frequency, day):
++        requests.append((tool, ticker, frequency, day))
++        key = "AAPL::fin_income" if tool == "get_income_statement" else "AAPL::fin_cashflow"
++        return FIXTURES[key]
++
++    monkeypatch.setattr(tools, "route_to_vendor", vendor)
++    first = AIMessage(
++        content="",
++        tool_calls=[
++            {"name": tool, "id": tool, "args": {"freq": "quarterly"}}
++            for tool in ("get_income_statement", "get_cashflow")
++        ],
++    )
++    model = OfflineChatModel(responses=[first, AIMessage(content="Grounded report")])
++    spec = build_analyst_execution_plan(["fundamentals"]).specs[0]
++    graph = _analyst_graph(spec, create_fundamentals_analyst(model), max_tool_rounds=20)
++    initial = state()
++    initial["messages"] = [HumanMessage(content="Analyze AAPL")]
++    result = graph.invoke(initial)
++    assert result["fundamentals_report"] == "Grounded report"
++    assert set(requests) == {
++        ("get_income_statement", "AAPL", "quarterly", "2026-10-08"),
++        ("get_cashflow", "AAPL", "quarterly", "2026-10-08"),
++    }
++    prompt = model.prompts[1][0].content
++    assert "109,417.00" in prompt and "29,789.00" in prompt
++    assert "50.06%" in prompt and "+27.12%" in prompt
++    assert model.calls == 2
++
++
+ def test_tool_call_date_must_match_active_run():
+     current = state(income=FIXTURES["AAPL::fin_income"])
+     current["messages"][0].tool_calls[0]["args"]["curr_date"] = "2026-10-07"
+@@ -133,11 +202,43 @@ def test_flattened_log_is_not_guessed_back_into_csv():
+ def test_latest_cumulative_cashflow_is_printed_once():
+     text = "# Cash Flow Statement for AAPL (quarterly), USD in millions\n,2026-03-28 (6 months)\nOperating Cash Flow,12345\n"
+     output = build_summary(None, text)
+-    assert output.count("12,345.00") == 1
++    assert output.count("- Operating Cash Flow, 2026-03-28 (6 months): 12,345.00") == 1
++    assert "Operating Cash Flow=12,345.00" in output
+     assert "6-month cumulative as filed" in output
+     assert "H1" not in output
+ 
+ 
++def test_dated_facts_preserve_missing_quarters_and_row_alignment():
++    text = "# Income Statement for AAPL (quarterly), USD in millions\n,2025-12-27,2026-06-27\nRevenue,143756,109417\nNet Income,42097,29789\n"
++    output = build_summary(text, None)
++    assert "2025-12-27: Revenue=143,756.00; Net Income=42,097.00" in output
++    assert "2026-06-27: Revenue=109,417.00; Net Income=29,789.00" in output
++    assert "2026-03-28" not in output and "2025-09-27" not in output
++
++
++def test_balance_sheet_requires_matched_tool_type_and_title():
++    text = "# Balance Sheet for AAPL (quarterly), USD in millions\n,2026-06-27\nTotal Assets,383266\nStockholders Equity,107520\n"
++    current = state()
++    current["messages"] = [
++        AIMessage(content="", tool_calls=[
++            {"name": "get_balance_sheet", "id": "balance", "args": {"freq": "quarterly"}}
++        ]),
++        ToolMessage(content=text, name="get_balance_sheet", tool_call_id="balance"),
++    ]
++    assert "Total Assets=383,266.00; Stockholders Equity=107,520.00" in summary_from_state(current)
++    current["messages"][0].tool_calls[0]["name"] = "get_cashflow"
++    assert summary_from_state(current) == ""
++
++
++def test_source_facts_keep_only_recent_eight_columns():
++    dates = [f"{year}-12-31" for year in range(2015, 2027)]
++    text = "# Income Statement for AAPL (annual)\n," + ",".join(dates) + "\nRevenue," + ",".join(str(y) for y in range(12))
++    output = build_summary(text, None)
++    assert "2015-12-31:" not in output and "2018-12-31:" not in output
++    assert "2019-12-31: Revenue=4.00" in output
++    assert "2026-12-31: Revenue=11.00" in output
++
++
+ def test_csv_parser_failure_degrades_to_unavailable(monkeypatch):
+     import csv
+ 
+diff --git a/tools_probe/guarded_run.py b/tools_probe/guarded_run.py
+index 1af590b..a40bc20 100644
+--- a/tools_probe/guarded_run.py
++++ b/tools_probe/guarded_run.py
+@@ -462,7 +462,7 @@ def main() -> int:
+                 "analyst_data": {},
+             }
+         elif report_dir is None:
+-            # No report line: the run produced nothing. Falling back to
++            # No saved path returned: the run produced nothing. Falling back to
+             # whatever is newest on disk is how a failed run gets graded
+             # against the previous run''s leftovers, so refuse instead.
+             print("guard: the run saved no report; refusing to grade an old one")
+@@ -539,23 +539,25 @@ def _run_cli(cli_args):
+     """Run the CLI once. Returns (report_dir_or_None, failed_flag)."""
+     import contextlib
+     import io
+-    import re as _re
+ 
+     from cli.main import app
+ 
+     buf = io.StringIO()
+     failed = False
++    report_dir = None
+     try:
+         with contextlib.redirect_stdout(buf):
+-            app(cli_args)
++            result = app(cli_args, standalone_mode=False)
++            if isinstance(result, (str, pathlib.Path)):
++                report_dir = str(result)
++            elif isinstance(result, int):
++                failed = bool(result)
+     except SystemExit as exc:
+         failed = bool(exc.code)
+     except Exception as exc:
+         print(f"guard: CLI raised {type(exc).__name__}: {exc}")
+         failed = True
+-    printed = buf.getvalue()
+-    match = _re.search(r"Report saved to:\s*(\S+)", printed)
+-    return (match.group(1) if match else None), failed
++    return report_dir, failed
+ 
+ 
+ def _report_counts(counts):
+diff --git a/tradingagents/agents/analysts/fundamentals_analyst.py b/tradingagents/agents/analysts/fundamentals_analyst.py
+index e1ed28f..c593db8 100644
+--- a/tradingagents/agents/analysts/fundamentals_analyst.py
++++ b/tradingagents/agents/analysts/fundamentals_analyst.py
+@@ -30,7 +30,11 @@ def create_fundamentals_analyst(llm):
+             instrument_context += (
+                 "\n\n# Computed metrics from this run's tool messages\n"
+                 "Use the source units and dated periods below; do not substitute "
+-                "column offsets for a prior-year comparison.\n" + metrics
++                "column offsets for a prior-year comparison. Financial tables and "
++                "historical comparisons must use these dated field/value pairs. "
++                "Omit unsupported fields and periods; do not reconstruct a complete "
++                "four-quarter sequence when source quarters are missing. Quote financial "
++                "figures in their original source units.\n" + metrics
+             )
+ 
+         system_message = (
+diff --git a/tradingagents/dataflows/financial_metrics.py b/tradingagents/dataflows/financial_metrics.py
+index 5915a2f..8eedcd7 100644
+--- a/tradingagents/dataflows/financial_metrics.py
++++ b/tradingagents/dataflows/financial_metrics.py
+@@ -14,12 +14,13 @@ from langchain_core.messages import AIMessage, ToolMessage
+ 
+ _DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:\s*\((\d+) months?\))?$")
+ _TITLE = re.compile(
+-    r"^# (Income Statement|Cash Flow(?: Statement)?)(?: data)? for (\S+) \(([^)]+)\)"
++    r"^# (Income Statement|Cash Flow(?: Statement)?|Balance Sheet)(?: data)? for (\S+) \(([^)]+)\)"
+ )
+ _UNIT = re.compile(r"\b([A-Z]{3}) in (millions|thousands|units)\b")
+ _ALIASES = {
+     "Revenue": ("Revenue", "Total Revenue"),
+     "Gross Profit": ("Gross Profit",),
++    "Operating Income": ("Operating Income", "Total Operating Income As Reported"),
+     "Net Income": ("Net Income", "Net Income Common Stockholders"),
+     "Operating Cash Flow": (
+         "Operating Cash Flow",
+@@ -127,8 +128,8 @@ def _year_ago(period: Period, statement: Statement) -> Period | None:
+ 
+ 
+ def _calendar_pair(statement: Statement, year: int, row: str) -> tuple[float, str] | None:
+-    # Only a source explicitly labelling single quarters may be summed. An
+-    # Apple March 6-month column is never a calendar half-year or a quarter.
++    # A vendor's quarterly schedule does not prove a three-month flow period.
++    # Require an explicit duration before summing source cash-flow columns.
+     if statement.frequency != "quarterly":
+         return None
+     pair = []
+@@ -136,7 +137,7 @@ def _calendar_pair(statement: Statement, year: int, row: str) -> tuple[float, st
+         candidates = [
+             p
+             for p in statement.periods
+-            if p.end == date(year, month, day) and p.months in (None, 3)
++            if p.end == date(year, month, day) and p.months == 3
+         ]
+         if len(candidates) != 1 or _value(candidates[0], row) is None:
+             return None
+@@ -145,7 +146,31 @@ def _calendar_pair(statement: Statement, year: int, row: str) -> tuple[float, st
+     return total, " + ".join(p.label for p in pair)
+ 
+ 
+-def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
++def _dated_facts(statement: Statement, label: str) -> list[str]:
++    """Transpose recent source columns so each value carries its period and row."""
++    if not statement.periods:
++        return []
++    periods = sorted(statement.periods, key=lambda p: (p.end, p.months or 0))[-8:]
++    lines = [
++        f"## {label}: source facts keyed by period (recent {len(periods)} columns)",
++        f"Source frequency: {statement.frequency}; monetary units: {statement.unit}. "
++        "Explicit row units take precedence; do not assign money units to EPS or share counts.",
++        "Only these source columns exist in this extract. Missing quarters/fields are not zero "
++        "and must not be filled in. Period starts are not supplied.",
++    ]
++    for period in periods:
++        facts = "; ".join(
++            f"{row}={value:,.2f}"
++            for row, value in period.values.items()
++            if value is not None
++        )
++        lines.append(f"- {period.label}: {facts or 'NOT AVAILABLE (all rows empty)'}")
++    return lines
++
++
++def build_summary(
++    income_csv: str | None, cash_csv: str | None, balance_csv: str | None = None
++) -> str:
+     """Never guess currency, scale, period start, or a missing prior-year fact."""
+     lines: list[str] = []
+     income = parse(income_csv)
+@@ -156,7 +181,12 @@ def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
+         revenue, gross, net = (
+             _value(last, row) for row in ("Revenue", "Gross Profit", "Net Income")
+         )
+-        for label, value in (("Revenue", revenue), ("Net income", net)):
++        for label, value in (
++            ("Revenue", revenue),
++            ("Gross profit", gross),
++            ("Operating income", _value(last, "Operating Income")),
++            ("Net income", net),
++        ):
+             lines.append(
+                 f"- {label}: {value:,.2f} ({income.unit})"
+                 if value is not None
+@@ -164,6 +194,11 @@ def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
+             )
+         if revenue is not None and revenue != 0 and gross is not None:
+             lines.append(f"- Gross margin (Gross Profit / Revenue): {100 * gross / revenue:.2f}%")
++        # This row declares its own per-share unit; the statement's million-dollar
++        # unit does not apply to it. Do not infer an EPS unit for other vendors.
++        eps = last.values.get("Diluted EPS (USD/shares)")
++        if eps is not None:
++            lines.append(f"- Diluted EPS, {last.label}: {eps:.2f} USD/share (explicit row unit)")
+         previous = _year_ago(last, income)
+         prior = _value(previous, "Net Income") if previous else None
+         if net is not None and prior not in (None, 0):
+@@ -178,6 +213,11 @@ def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
+         lines.append("## Income statement: NOT AVAILABLE (no parseable multiline statement)")
+     if cash.periods:
+         lines.append(f"## Cash flow -- {cash.unit}; source-labelled periods only")
++        lines.append(
++            "- A vendor label 'quarterly' is not proof of three-month cash flows. "
++            "Without explicit durations/starts, quote ending dates only; do not "
++            "label columns as calendar quarters or sum them into half-year cash flows."
++        )
+         last = max(cash.periods, key=lambda p: (p.end, -(p.months or 3)))
+         lines.append(f"- Latest column: {_period_text(last, cash)}")
+         for row in ("Operating Cash Flow", "Free Cash Flow"):
+@@ -204,6 +244,12 @@ def build_summary(income_csv: str | None, cash_csv: str | None) -> str:
+                     )
+     elif cash_csv:
+         lines.append("## Cash flow: NOT AVAILABLE (no parseable multiline statement)")
++    for label, statement in (
++        ("Income statement", income),
++        ("Cash flow", cash),
++        ("Balance sheet", parse(balance_csv)),
++    ):
++        lines.extend(_dated_facts(statement, label))
+     return "\n".join(lines)
+ 
+ 
+@@ -215,7 +261,11 @@ def summary_from_state(state: dict[str, Any]) -> str:
+         return ""
+     calls: dict[str, dict] = {}
+     statements: dict[str, str] = {}
+-    allowed = {"get_income_statement": "income", "get_cashflow": "cash"}
++    allowed = {
++        "get_income_statement": "income",
++        "get_cashflow": "cash",
++        "get_balance_sheet": "balance",
++    }
+     for message in state.get("messages", []):
+         if isinstance(message, AIMessage):
+             calls.update({call["id"]: call for call in message.tool_calls})
+@@ -225,7 +275,10 @@ def summary_from_state(state: dict[str, Any]) -> str:
+         if not call or call.get("name") not in allowed:
+             continue
+         args = call.get("args", {})
+-        if str(args.get("ticker", "")).upper() != ticker:
++        # InjectedState parameters are hidden from the model and absent from
++        # AIMessage.tool_calls. Explicit tickers must match; when it is injected,
++        # the matched result's title below still proves the active instrument.
++        if "ticker" in args and str(args["ticker"]).upper() != ticker:
+             continue
+         if args.get("curr_date") not in (None, as_of):
+             continue
+@@ -239,7 +292,11 @@ def summary_from_state(state: dict[str, Any]) -> str:
+         title = _TITLE.match(text.splitlines()[0]) if text.splitlines() else None
+         if not title or title[2].upper() != ticker:
+             continue
+-        if (call["name"] == "get_income_statement") != (title[1] == "Income Statement"):
++        title_kind = {
++            "Income Statement": "income", "Cash Flow": "cash",
++            "Cash Flow Statement": "cash", "Balance Sheet": "balance",
++        }.get(title[1])
++        if title_kind != kind:
+             continue
+         filed = re.search(r"filed on or before (\d{4}-\d{2}-\d{2})", text)
+         if filed and filed[1] != as_of:
+@@ -249,4 +306,6 @@ def summary_from_state(state: dict[str, Any]) -> str:
+             continue
+         # Last result of the same tool in the current state wins, even if empty.
+         statements[kind] = text
+-    return build_summary(statements.get("income"), statements.get("cash"))
++    return build_summary(
++        statements.get("income"), statements.get("cash"), statements.get("balance")
++    )

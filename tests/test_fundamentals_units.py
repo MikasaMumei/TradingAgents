@@ -50,8 +50,16 @@ def test_each_money_figure_carries_the_currency_it_is_in():
 
     assert "Market Cap: 203440193536 GBP" in out
     assert "EPS (TTM): 3.42 GBP" in out and "Book Value: 29.1 GBP" in out
-    assert "52 Week High: 3800.0 GBp" in out and "50 Day Average: 3500.5 GBp" in out
+    assert "52 Week High: 3800.0 GBp" in out
     assert "Revenue (TTM): 296600993792 USD" in out and "Net Income: 25970999296 USD" in out
+
+
+@pytest.mark.unit
+def test_unverified_metadata_averages_do_not_override_market_indicators():
+    out = _fundamentals({"longName": "New listing", "currency": "USD",
+                         "fiftyDayAverage": 140.0, "twoHundredDayAverage": 145.0})
+    assert "50 Day Average:" not in out and "200 Day Average:" not in out
+    assert "Insufficient-history indicators remain unavailable" in out
 
 
 @pytest.mark.unit

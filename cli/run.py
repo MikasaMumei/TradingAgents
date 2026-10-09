@@ -25,6 +25,7 @@ from cli.display import (
 from cli.selections import depth_from_env, get_user_selections, unattended_gaps
 from cli.stats_handler import StatsCallbackHandler
 from tradingagents.agents.rating import is_review, run_rating
+from tradingagents.dataflows.financial_metrics import FINANCIAL_REVIEW_MARKER
 from tradingagents.dataflows.symbols import safe_ticker_component
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.analyst_execution import (
@@ -377,14 +378,21 @@ def run_analysis(checkpoint: bool | None = None, portfolio=None, flags=None):
     # A decision nobody can read is not a position. Say so here rather than
     # leaving the run to look like a normal result.
     if is_review(run_rating(final_state)):
-        console.print(
-            "[yellow]No rating could be read from the final decision, so this run "
-            "is recorded for review rather than as a position. Re-run, or read the "
-            "decision text below and judge it yourself.[/yellow]\n"
-        )
+        if FINANCIAL_REVIEW_MARKER in (final_state.get("fundamentals_report") or ""):
+            console.print(
+                "[yellow]Financial content requires source verification. This run's "
+                "signal and memory entry are REVIEW; the original model decision "
+                "is retained for inspection. Do not retry automatically.[/yellow]\n"
+            )
+        else:
+            console.print(
+                "[yellow]No rating could be read from the final decision, so this run "
+                "is recorded for review rather than as a position. Re-run, or read the "
+                "decision text below and judge it yourself.[/yellow]\n"
+            )
     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
 
-    _offer_reports(final_state, graph, selections["ticker"],
+    return _offer_reports(final_state, graph, selections["ticker"],
                    save=flags.get("save"), show=flags.get("show"), html=flags.get("html"))
 
 
@@ -429,6 +437,7 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
     answering the save question at the prompt is also asked about the page and
     offered to open it; a run whose flags answer the save question asks neither.
     """
+    saved_path = None
     asked = save is None
     if asked:
         save = typer.prompt("Save report?", default="Y").strip().upper() in ("Y", "YES", "")
@@ -447,6 +456,7 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
         try:
             report_file = graph.save_reports(final_state, ticker, save_path, html=html)
             saved = True
+            saved_path = save_path.resolve()
             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
             console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
         except Exception as e:
@@ -461,3 +471,4 @@ def _offer_reports(final_state, graph, ticker, save=None, show=None, html=None):
         show = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper() in ("Y", "YES", "")
     if show:
         display_complete_report(final_state)
+    return saved_path

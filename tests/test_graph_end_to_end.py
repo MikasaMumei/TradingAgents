@@ -262,8 +262,10 @@ def test_an_analyst_that_keeps_calling_tools_writes_its_report_at_the_limit(tmp_
     final_state, rating = graph.propagate("NVDA", TRADE_DATE)
 
     assert len(model.tool_turns) == 3 * 3   # three tool-using analysts, three rounds each
-    for key in ("market_report", "news_report", "fundamentals_report"):
+    for key in ("market_report", "news_report"):
         assert final_state[key] == TEXT
+    assert final_state["fundamentals_report"].startswith(TEXT + "\n")
+    assert "financial-semantics: LIMITED_CHECK" in final_state["fundamentals_report"]
     assert rating == "Overweight"
 
 

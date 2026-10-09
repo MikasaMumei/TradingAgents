@@ -1,0 +1,684 @@
+diff --git a/cli/run.py b/cli/run.py
+index 071dc3c..c864107 100644
+--- a/cli/run.py
++++ b/cli/run.py
+@@ -25,6 +25,7 @@ from cli.display import (
+ from cli.selections import depth_from_env, get_user_selections, unattended_gaps
+ from cli.stats_handler import StatsCallbackHandler
+ from tradingagents.agents.rating import is_review, run_rating
++from tradingagents.dataflows.financial_metrics import FINANCIAL_REVIEW_MARKER
+ from tradingagents.dataflows.symbols import safe_ticker_component
+ from tradingagents.default_config import DEFAULT_CONFIG
+ from tradingagents.graph.analyst_execution import (
+@@ -377,11 +378,18 @@ def run_analysis(checkpoint: bool | None = None, portfolio=None, flags=None):
+     # A decision nobody can read is not a position. Say so here rather than
+     # leaving the run to look like a normal result.
+     if is_review(run_rating(final_state)):
+-        console.print(
+-            "[yellow]No rating could be read from the final decision, so this run "
+-            "is recorded for review rather than as a position. Re-run, or read the "
+-            "decision text below and judge it yourself.[/yellow]\n"
+-        )
++        if FINANCIAL_REVIEW_MARKER in (final_state.get("fundamentals_report") or ""):
++            console.print(
++                "[yellow]Financial content requires source verification. This run's "
++                "signal and memory entry are REVIEW; the original model decision "
++                "is retained for inspection. Do not retry automatically.[/yellow]\n"
++            )
++        else:
++            console.print(
++                "[yellow]No rating could be read from the final decision, so this run "
++                "is recorded for review rather than as a position. Re-run, or read the "
++                "decision text below and judge it yourself.[/yellow]\n"
++            )
+     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
+ 
+     return _offer_reports(final_state, graph, selections["ticker"],
+diff --git a/tests/test_financial_metrics.py b/tests/test_financial_metrics.py
+index 50ad1d3..3d77f96 100644
+--- a/tests/test_financial_metrics.py
++++ b/tests/test_financial_metrics.py
+@@ -137,7 +137,8 @@ def test_production_subgraph_injects_ticker_and_rebuilds_metrics(monkeypatch):
+     initial = state()
+     initial["messages"] = [HumanMessage(content="Analyze AAPL")]
+     result = graph.invoke(initial)
+-    assert result["fundamentals_report"] == "Grounded report"
++    assert result["fundamentals_report"].startswith("Grounded report\n")
++    assert "financial-semantics: LIMITED_CHECK" in result["fundamentals_report"]
+     assert set(requests) == {
+         ("get_income_statement", "AAPL", "quarterly", "2026-10-08"),
+         ("get_cashflow", "AAPL", "quarterly", "2026-10-08"),
+@@ -263,7 +264,8 @@ def test_real_fundamentals_node_receives_metrics_on_second_round():
+     second = state(income=FIXTURES["AAPL::fin_income"])
+     second["messages"] = [initial["messages"][0]] + second["messages"]
+     result = node(second)
+-    assert result["fundamentals_report"] == "Evidence-based report"
++    assert result["fundamentals_report"].startswith("Evidence-based report\n")
++    assert result["messages"][0].content == "Evidence-based report"
+     assert "109,417.00" in model.prompts[1][0].content
+     assert "50.06%" in model.prompts[1][0].content
+     assert "+27.12%" in model.prompts[1][0].content
+diff --git a/tests/test_financial_semantics.py b/tests/test_financial_semantics.py
+new file mode 100644
+index 0000000..0009b61
+--- /dev/null
++++ b/tests/test_financial_semantics.py
+@@ -0,0 +1,207 @@
++"""Regression cases for wrong accounting interpretations, not just arithmetic."""
++
++import importlib
++
++import pytest
++from langchain_core.messages import AIMessage, ToolMessage
++
++from tests.test_structured_reply import OfflineChatModel
++from tradingagents.agents.analysts.fundamentals_analyst import create_fundamentals_analyst
++from tradingagents.dataflows.financial_metrics import (
++    FINANCIAL_REVIEW_MARKER,
++    annotate_financial_report,
++    build_summary,
++    financial_claim_warnings,
++)
++
++BALANCE = "# Balance Sheet for SPCX (quarterly), USD in millions\n,2026-06-30\nCash And Cash Equivalents,93522\nCurrent Liabilities,21122\nTotal Liabilities,65546\n"
++CASH = "# Cash Flow data for 600519.SS (quarterly)\n,2026-06-30,2026-03-31\nOperating Cash Flow,43780858849.93,26909891269.13\n"
++
++
++def test_liabilities_cannot_supply_missing_debt():
++    output = build_summary(None, None, BALANCE)
++    assert "Cash minus debt: NOT AVAILABLE" in output
++    assert "72,400" not in output and "27,976" not in output
++    assert "Do not substitute Current Liabilities or Total Liabilities" in output
++
++
++def test_explicit_debt_uses_same_date_and_does_not_replace_missing_latest_with_old_value():
++    known = BALANCE + "Total Debt,12000\n"
++    assert "81,522.00" in build_summary(None, None, known)
++    missing = known.replace("2026-06-30", "2026-06-30,2025-12-31").replace(
++        "Total Debt,12000", "Total Debt,,12000"
++    )
++    assert "Cash minus debt: NOT AVAILABLE" in build_summary(None, None, missing)
++
++
++def test_sec_cash_row_alias_preserves_its_actual_name_and_never_substitutes_liabilities():
++    text = BALANCE.replace("Cash And Cash Equivalents", "Cash and Equivalents")
++    assert "Cash minus debt: NOT AVAILABLE" in build_summary(None, None, text)
++    output = build_summary(None, None, text + "Total Debt,12000\n")
++    assert "Cash and Equivalents minus Total Debt: 81,522.00" in output
++
++
++@pytest.mark.parametrize("report,statements,code", [
++    ("净现金=现金减流动负债。", {}, "net_cash_definition"),
++    ("净现金头寸≈72,400美元百万（93,522−21,122）。", {"balance": BALANCE}, "net_cash_scope"),
++    ("2026Q2单季经营现金流437.8亿。", {"cash": CASH}, "cash_period"),
++    ("其他应收款1,440亿，为经销商预收款/打款，是需求蓄水池。", {}, "receivables_category"),
++    ("FCF收益率3.8%；加上4.13%股息率，股东总回报接近8%。", {}, "return_double_count"),
++    ("货币单位：CNY（数据源以人民币元计）。", {"cash": CASH}, "statement_units"),
++    ("Net cash = cash minus current liabilities.", {}, "net_cash_definition"),
++    ("Single-quarter operating cash flow is 43 billion.", {"cash": CASH}, "cash_period"),
++    ("Other receivables are customer advances.", {}, "receivables_category"),
++    ("FCF yield plus dividend yield gives total return of 8%.", {}, "return_double_count"),
++])
++def test_known_bad_claims_are_flagged_with_locations(report, statements, code):
++    flags = financial_claim_warnings(report, statements)
++    assert code in {w["code"] for w in flags}
++    assert all(w["line"] == "1" and w["excerpt"] == report for w in flags)
++
++
++@pytest.mark.parametrize("report", [
++    "现金减流动负债不是净现金。",
++    "其他应收款不是客户预收款，具体构成未提供。",
++    "FCF收益率不能加上股息率当作股东总回报。",
++    "本现金流列无法确认为2026Q2单季，不做加总。",
++    "Net cash is not cash minus current liabilities.",
++    "Other receivables are not customer advances.",
++    "Ending 2026-06-30: Operating Cash Flow 43,780,858,849.93, source units; duration unknown.",
++    "2026Q2单季收入375.8亿；现金流仅按截至日引用。",
++])
++def test_corrective_and_unrelated_statements_are_not_flagged(report):
++    # The last example deliberately separates an income claim from cash timing.
++    assert not financial_claim_warnings(report, {"cash": CASH})
++
++
++def test_proven_three_month_cash_period_is_not_flagged():
++    text = CASH.replace("2026-06-30", "2026-06-30 (3 months)").replace(
++        "2026-03-31", "2026-03-31 (3 months)"
++    )
++    assert not financial_claim_warnings("2026Q2单季经营现金流437.8亿。", {"cash": text})
++
++
++def test_review_annotation_keeps_raw_ai_reply_and_never_rescues_an_empty_stage():
++    raw = "2026Q2单季经营现金流437.8亿。"
++    state = {"company_of_interest": "600519.SS", "trade_date": "2026-10-09", "messages": [
++        AIMessage(content="", tool_calls=[{"name": "get_cashflow", "id": "cash", "args": {}}]),
++        ToolMessage(content=CASH, tool_call_id="cash"),
++    ]}
++    model = OfflineChatModel(responses=[AIMessage(content=raw)])
++    result = create_fundamentals_analyst(model)(state)
++    assert result["messages"][0].content == raw
++    assert result["fundamentals_report"].startswith(raw + "\n")
++    assert FINANCIAL_REVIEW_MARKER in result["fundamentals_report"]
++    assert model.calls == 1
++    assert annotate_financial_report("", state) == ""
++
++
++@pytest.mark.parametrize("module,factory", [
++    ("tradingagents.agents.researchers.bull_researcher", "create_bull_researcher"),
++    ("tradingagents.agents.researchers.bear_researcher", "create_bear_researcher"),
++    ("tradingagents.agents.managers.research_manager", "create_research_manager"),
++    ("tradingagents.agents.trader.trader", "create_trader"),
++    ("tradingagents.agents.risk_mgmt.aggressive_debator", "create_aggressive_debator"),
++    ("tradingagents.agents.risk_mgmt.conservative_debator", "create_conservative_debator"),
++    ("tradingagents.agents.risk_mgmt.neutral_debator", "create_neutral_debator"),
++    ("tradingagents.agents.managers.portfolio_manager", "create_portfolio_manager"),
++])
++def test_accounting_definitions_reach_actual_downstream_prompts(module, factory):
++    seen = []
++
++    class Model:
++        def invoke(self, prompt, *args, **kwargs):
++            seen.append(str(prompt))
++            return AIMessage(content="**Rating**: Hold\nEvidence needs review.")
++
++        def with_structured_output(self, *args, **kwargs):
++            raise NotImplementedError
++
++    state = {
++        "company_of_interest": "SPCX", "trade_date": "2026-10-09", "asset_type": "stock",
++        "instrument_context": "SPCX", "market_report": "M", "sentiment_report": "S", "news_report": "N",
++        "fundamentals_report": "F\n" + FINANCIAL_REVIEW_MARKER,
++        "investment_plan": "P", "trader_investment_plan": "T", "past_context": "", "portfolio_context": "",
++        "investment_debate_state": {"history": "", "count": 0, "bull_history": "", "bear_history": "", "current_response": ""},
++        "risk_debate_state": {"history": "", "latest_speaker": "", "count": 0,
++            "aggressive_history": "", "conservative_history": "", "neutral_history": "",
++            "current_aggressive_response": "", "current_conservative_response": "", "current_neutral_response": ""},
++    }
++    getattr(importlib.import_module(module), factory)(Model())(state)
++    prompt = "\n".join(seen)
++    assert "cash minus current liabilities is not net cash" in prompt
++    assert "FCF yield plus dividend yield is not shareholder total return" in prompt
++    assert "do not reuse those claims" in prompt
++
++
++def test_saved_report_screen_distinguishes_review_limited_and_not_checked(tmp_path):
++    from tools_probe.check_run_complete import content_review
++
++    path = tmp_path / "1_analysts" / "fundamentals.md"
++    path.parent.mkdir()
++    path.write_text("Legacy report", encoding="utf-8")
++    assert content_review(tmp_path, ["fundamentals"]) == "NOT_CHECKED"
++    path.write_text(annotate_financial_report("净现金=现金减流动负债。", {}), encoding="utf-8")
++    assert content_review(tmp_path, ["fundamentals"]) == "REVIEW"
++    path.write_text(annotate_financial_report("Only dated source facts.", {}), encoding="utf-8")
++    assert content_review(tmp_path, ["fundamentals"]) == "LIMITED_CHECK_NO_FLAGS"
++    assert content_review(tmp_path, ["market"]) == "NOT_CHECKED"
++
++
++def test_annotation_cannot_turn_a_short_model_reply_into_a_complete_stage(tmp_path):
++    from tools_probe.check_run_complete import judge
++
++    path = tmp_path / "fundamentals.md"
++    path.write_text(annotate_financial_report("净现金=现金减流动负债。", {}), encoding="utf-8")
++    result = judge(path, "Analyst: fundamentals")
++    assert not result["ok"]
++    assert result["body_chars"] == len("净现金=现金减流动负债。")
++
++
++def test_flagged_financial_premise_is_review_in_signal_and_memory_without_changing_model_decision(tmp_path):
++    from tradingagents.agents.rating import run_rating
++    from tradingagents.graph.trading_graph import TradingAgentsGraph
++    from tradingagents.memory import TradingMemoryLog
++
++    state = {"fundamentals_report": annotate_financial_report("净现金=现金减流动负债。", {}),
++             "final_rating": "Buy", "final_trade_decision": "**Rating**: Buy\nAccumulate."}
++    assert run_rating(state) == "REVIEW"
++    graph = object.__new__(TradingAgentsGraph)
++    graph._log_state = lambda *args: None
++    graph.memory_log = TradingMemoryLog({"memory_log_path": str(tmp_path / "memory.md")})
++    graph.record_decision("SPCX", "2026-10-09", state)
++    assert graph.memory_log.load_entries()[0]["rating"] == "REVIEW"
++    assert state["final_rating"] == "Buy" and state["final_trade_decision"].startswith("**Rating**: Buy")
++
++
++def test_guard_returns_review_and_never_retries_a_content_warning(monkeypatch, tmp_path):
++    import sys
++    from types import SimpleNamespace
++
++    from tools_probe import guarded_run as guard
++    from tradingagents.default_config import DEFAULT_CONFIG
++
++    calls = []
++    report_dir = tmp_path / "reports"
++    report_dir.mkdir()
++    monkeypatch.setattr(guard, "REPO", tmp_path)
++    monkeypatch.setitem(DEFAULT_CONFIG, "results_dir", str(tmp_path))
++    monkeypatch.setattr(sys, "argv", ["guarded_run", "--no-probe", "--no-exchange-fix", "--max-retries", "3", "--"])
++    monkeypatch.setattr(guard, "_run_cli", lambda args: (calls.append(args) or str(report_dir), False))
++    monkeypatch.setitem(sys.modules, "structured_guard", SimpleNamespace(install=lambda: None))
++    monkeypatch.setitem(sys.modules, "fin_context", SimpleNamespace(install=lambda: None))
++    monkeypatch.setitem(sys.modules, "exchange_sessions", SimpleNamespace(DEGRADED=[]))
++    monkeypatch.setitem(sys.modules, "prefetch_recorder", SimpleNamespace(install=lambda path: None))
++    log = SimpleNamespace(path=tmp_path / "tool.log", start=0, end=0, close=lambda: None)
++    monkeypatch.setitem(sys.modules, "run_toollog", SimpleNamespace(pin=lambda *args: log))
++    monkeypatch.setitem(sys.modules, "probe_lib", SimpleNamespace())
++    monkeypatch.setitem(sys.modules, "check_run_complete", SimpleNamespace(check=lambda *args: {
++        "ok": True, "content_review": "REVIEW", "results": [], "failed": [], "analyst_data": {},
++    }))
++    assert guard.main() == 2
++    assert len(calls) == 1
++    import json
++
++    receipt = json.loads(next((tmp_path / "data/probe").rglob("attempt-1.json")).read_text(encoding="utf-8"))
++    assert receipt["verdict"] == "ACCEPT"  # Stages and financial review are separate.
++    assert receipt["content_review"] == "REVIEW"
+diff --git a/tests/test_graph_end_to_end.py b/tests/test_graph_end_to_end.py
+index 2f5b55e..d06fa07 100644
+--- a/tests/test_graph_end_to_end.py
++++ b/tests/test_graph_end_to_end.py
+@@ -262,8 +262,10 @@ def test_an_analyst_that_keeps_calling_tools_writes_its_report_at_the_limit(tmp_
+     final_state, rating = graph.propagate("NVDA", TRADE_DATE)
+ 
+     assert len(model.tool_turns) == 3 * 3   # three tool-using analysts, three rounds each
+-    for key in ("market_report", "news_report", "fundamentals_report"):
++    for key in ("market_report", "news_report"):
+         assert final_state[key] == TEXT
++    assert final_state["fundamentals_report"].startswith(TEXT + "\n")
++    assert "financial-semantics: LIMITED_CHECK" in final_state["fundamentals_report"]
+     assert rating == "Overweight"
+ 
+ 
+diff --git a/tools_probe/check_run_complete.py b/tools_probe/check_run_complete.py
+index 015fbcb..06b53c0 100644
+--- a/tools_probe/check_run_complete.py
++++ b/tools_probe/check_run_complete.py
+@@ -15,7 +15,8 @@ Three rules follow from that:
+ * A missing file is a failure, never a skip, and a stage with no body is a
+   failure even when the file is non-empty.
+ 
+-Exit code is 0 only when every enabled stage carries real content.
++Exit code 1 rejects incomplete stages/data; 2 requests financial content review.
++Exit code 0 establishes completeness only, never full factual correctness.
+ 
+     .venv\Scripts\python.exe tools_probe\check_run_complete.py <report-dir> [--json]
+ """
+@@ -60,6 +61,8 @@ STAGES = {
+ 
+ def body_of(text: str) -> str:
+     """Drop blank lines and lines that are only a role label."""
++    # A program-generated review note must not rescue an empty/short model reply.
++    text = re.split(r"<!-- financial-semantics: (?:REVIEW|LIMITED_CHECK) -->", text, maxsplit=1)[0]
+     return "\n".join(
+         line for line in text.splitlines() if line.strip() and not ROLE_LINE.match(line)
+     ).strip()
+@@ -445,8 +448,10 @@ def check(report_dir: pathlib.Path, fallback_analysts=None, tool_log=None, degra
+             if record["stage"] == "Analyst: " + analyst:
+                 record["data_state"] = info["state"]
+     ok = not failed and not unproven
++    financial_review = content_review(report_dir, analysts)
+     return {
+         "ok": ok,
++        "content_review": financial_review,
+         "analysts": analysts,
+         "results": results,
+         "failed": failed,
+@@ -460,6 +465,24 @@ def check(report_dir: pathlib.Path, fallback_analysts=None, tool_log=None, degra
+     }
+ 
+ 
++def content_review(report_dir, analysts):
++    """Separate operational completeness from the analyst's bounded content screen."""
++    from tradingagents.dataflows.financial_metrics import (
++        FINANCIAL_CHECK_MARKER,
++        FINANCIAL_REVIEW_MARKER,
++    )
++
++    if "fundamentals" not in analysts:
++        return "NOT_CHECKED"
++    path = pathlib.Path(report_dir) / "1_analysts" / "fundamentals.md"
++    text = path.read_text(encoding="utf-8") if path.is_file() else ""
++    if FINANCIAL_REVIEW_MARKER in text:
++        return "REVIEW"
++    if FINANCIAL_CHECK_MARKER in text:
++        return "LIMITED_CHECK_NO_FLAGS"
++    return "NOT_CHECKED"
++
++
+ def degradation_notes(notes):
+     """What the data layer had to give up on, as caller-visible records."""
+     return [dict(n) for n in (notes or [])]
+@@ -510,7 +533,7 @@ def main() -> int:
+ 
+     if args.json:
+         print(json.dumps(verdict, ensure_ascii=False, indent=2, default=str))
+-        return 0 if verdict["ok"] else 1
++        return 2 if verdict.get("content_review") == "REVIEW" else (0 if verdict["ok"] else 1)
+ 
+     if not verdict.get("results"):
+         print("REJECT: {}".format(verdict.get("reason")))
+@@ -548,6 +571,7 @@ def main() -> int:
+     if verdict.get("resumed"):
+         print("RESUMED : a checkpoint was replayed; restored stages carry no evidence here")
+     print("VERDICT : {!s}".format("ACCEPT" if verdict["ok"] else "REJECT"))
++    print("CONTENT : " + verdict.get("content_review", "NOT_CHECKED"))
+     if unproven:
+         print(
+             "          {} had no usable input; this is NOT a complete analysis".format(
+@@ -574,7 +598,7 @@ def main() -> int:
+                 d.get("symbol"), d.get("stage"), str(d.get("error"))[:44]
+             )
+         )
+-    return 0 if verdict["ok"] else 1
++    return 2 if verdict.get("content_review") == "REVIEW" else (0 if verdict["ok"] else 1)
+     raise SystemExit(main())
+ 
+ 
+diff --git a/tools_probe/guarded_run.py b/tools_probe/guarded_run.py
+index a40bc20..ff06120 100644
+--- a/tools_probe/guarded_run.py
++++ b/tools_probe/guarded_run.py
+@@ -500,6 +500,7 @@ def main() -> int:
+                 "end": run_log.end,
+                 "prefetch_log": str(prefetch_log.path) if prefetch_log else None,
+                 "verdict": ("ACCEPT" if verdict["ok"] else "REJECT") if verdict else None,
++                "content_review": verdict.get("content_review", "NOT_CHECKED") if verdict else "NOT_CHECKED",
+             },
+         )
+         attempts.append(
+@@ -511,8 +512,13 @@ def main() -> int:
+         )
+         _print_verdict(verdict)
+ 
++        if verdict.get("content_review") == "REVIEW":
++            print("guard: financial content needs REVIEW; report retained, no automatic retry")
++            _print_attempts(attempts)
++            return 2
++
+         if verdict["ok"]:
+-            print("guard: accepted")
++            print("guard: stages accepted; financial content=" + verdict.get("content_review", "NOT_CHECKED"))
+             if len(attempts) > 1:
+                 _print_attempts(attempts)
+             return 0
+@@ -639,6 +645,7 @@ def _print_verdict(verdict):
+             )
+         return
+     total = len(verdict["results"])
++    print("CONTENT : " + verdict.get("content_review", "NOT_CHECKED"))
+     failed = verdict.get("failed") or []
+     rollup = verdict.get("analyst_data") or {}
+     unproven = verdict.get("starved_analysts") or []
+diff --git a/tradingagents/agents/analysts/fundamentals_analyst.py b/tradingagents/agents/analysts/fundamentals_analyst.py
+index c593db8..4a98540 100644
+--- a/tradingagents/agents/analysts/fundamentals_analyst.py
++++ b/tradingagents/agents/analysts/fundamentals_analyst.py
+@@ -9,7 +9,11 @@ from tradingagents.agents.tools import (
+     get_income_statement,
+     get_insider_transactions,
+ )
+-from tradingagents.dataflows.financial_metrics import summary_from_state
++from tradingagents.dataflows.financial_metrics import (
++    FINANCIAL_POLICY,
++    annotate_financial_report,
++    summary_from_state,
++)
+ 
+ # The tools this analyst is offered; its tool node is built from the same tuple.
+ TOOLS = (
+@@ -41,6 +45,7 @@ def create_fundamentals_analyst(llm):
+             "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
+             + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
+             + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements, and `get_insider_transactions` for recent insider buying and selling."
++            + "\n" + FINANCIAL_POLICY
+             + get_language_instruction()
+         )
+ 
+@@ -70,7 +75,7 @@ def create_fundamentals_analyst(llm):
+ 
+         return {
+             "messages": [result],
+-            "fundamentals_report": report,
++            "fundamentals_report": annotate_financial_report(report, state),
+         }
+ 
+     return fundamentals_analyst_node
+diff --git a/tradingagents/agents/context.py b/tradingagents/agents/context.py
+index 88a01b9..52a4e10 100644
+--- a/tradingagents/agents/context.py
++++ b/tradingagents/agents/context.py
+@@ -6,6 +6,7 @@ from collections.abc import Mapping
+ from typing import Any
+ 
+ from tradingagents.dataflows.date_window import is_historical
++from tradingagents.dataflows.financial_metrics import FINANCIAL_POLICY
+ from tradingagents.dataflows.vendors.yahoo.fundamentals import get_company_profile
+ 
+ logger = logging.getLogger(__name__)
+@@ -179,12 +180,14 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
+     consumer is never forced to make a yfinance call mid-graph.
+     """
+     context = state.get("instrument_context")
+-    if isinstance(context, str) and context.strip():
+-        return context
+-    return build_instrument_context(
+-        str(state["company_of_interest"]),
+-        state.get("asset_type", "stock"),
+-    )
++    if not isinstance(context, str) or not context.strip():
++        context = build_instrument_context(
++            str(state["company_of_interest"]),
++            state.get("asset_type", "stock"),
++        )
++    if state.get("fundamentals_report"):
++        context += "\n\n" + FINANCIAL_POLICY
++    return context
+ 
+ 
+ def report_or_absent(text: str, source: str) -> str:
+diff --git a/tradingagents/agents/rating.py b/tradingagents/agents/rating.py
+index 83f4808..7052744 100644
+--- a/tradingagents/agents/rating.py
++++ b/tradingagents/agents/rating.py
+@@ -18,6 +18,8 @@ from __future__ import annotations
+ import re
+ import unicodedata
+ 
++from tradingagents.dataflows.financial_metrics import FINANCIAL_REVIEW_MARKER
++
+ # Canonical, ordered 5-tier scale (most bullish to most bearish).
+ RATINGS_5_TIER: tuple[str, ...] = (
+     "Buy", "Overweight", "Hold", "Underweight", "Sell",
+@@ -109,6 +111,10 @@ def run_rating(final_state: dict) -> str:
+     The fallback serves a state without ``final_rating``, such as a run an older
+     version completed and a checkpoint hands back unchanged.
+     """
++    # Keep the model's original text/typed rating, but never record a flagged
++    # financial premise as an approved position in signals, memory or backtests.
++    if FINANCIAL_REVIEW_MARKER in (final_state.get("fundamentals_report") or ""):
++        return RATING_REVIEW
+     return final_state.get("final_rating") or parse_rating(final_state.get("final_trade_decision", ""))
+ 
+ 
+diff --git a/tradingagents/dataflows/financial_metrics.py b/tradingagents/dataflows/financial_metrics.py
+index 8eedcd7..be25494 100644
+--- a/tradingagents/dataflows/financial_metrics.py
++++ b/tradingagents/dataflows/financial_metrics.py
+@@ -17,6 +17,25 @@ _TITLE = re.compile(
+     r"^# (Income Statement|Cash Flow(?: Statement)?|Balance Sheet)(?: data)? for (\S+) \(([^)]+)\)"
+ )
+ _UNIT = re.compile(r"\b([A-Z]{3}) in (millions|thousands|units)\b")
++FINANCIAL_REVIEW_MARKER = "<!-- financial-semantics: REVIEW -->"
++FINANCIAL_CHECK_MARKER = "<!-- financial-semantics: LIMITED_CHECK -->"
++FINANCIAL_POLICY = (
++    "Financial evidence rules: preserve each source's currency, scale, ending date and "
++    "duration. A company profile's financialCurrency does not establish a statement's "
++    "scale. A vendor's quarterly label alone does not establish a three-month cash flow. "
++    "Do not turn undated-duration cash columns into Q1/Q2, H1, annual or TTM flows. "
++    "Net cash requires an explicit cash and debt scope on the same balance-sheet date; "
++    "cash minus current liabilities is not net cash. Other Receivables is an asset, "
++    "not customer advances or contract liabilities; its business composition needs "
++    "notes. FCF yield plus dividend yield is not shareholder total return and can "
++    "double-count cash. Financing cash inflow alone does not prove equity issuance "
++    "or dilution; operating/net income differences do not identify their cause. "
++    "Missing tool data does not prove the company did not disclose it. Separate "
++    "dated source facts, explicitly defined calculations and unverified hypotheses. "
++    "A financial-semantics REVIEW annotation names claims requiring source verification: "
++    "do not reuse those claims as established premises or cure them by repeating them. "
++    "Absence of flags from this limited check is not factual approval."
++)
+ _ALIASES = {
+     "Revenue": ("Revenue", "Total Revenue"),
+     "Gross Profit": ("Gross Profit",),
+@@ -29,6 +48,7 @@ _ALIASES = {
+         "Cash Flowsfromusedin Operating Activities Direct",
+     ),
+     "Free Cash Flow": ("Free Cash Flow",),
++    "Cash And Cash Equivalents": ("Cash And Cash Equivalents", "Cash and Equivalents"),
+ }
+ 
+ 
+@@ -168,6 +188,38 @@ def _dated_facts(statement: Statement, label: str) -> list[str]:
+     return lines
+ 
+ 
++def _balance_metrics(statement: Statement) -> list[str]:
++    """Keep debt, liabilities and asset categories distinct, even when values exist."""
++    if not statement.periods:
++        return []
++    latest = max(statement.periods, key=lambda p: p.end)
++    lines = [f"## Balance-sheet definitions, ending {latest.end}; {statement.unit}"]
++    cash = _value(latest, "Cash And Cash Equivalents")
++    debt = latest.values.get("Total Debt")
++    if cash is not None and debt is not None:
++        cash_row = next(
++            row for row in _ALIASES["Cash And Cash Equivalents"]
++            if latest.values.get(row) is not None
++        )
++        lines.append(
++            f"- {cash_row} minus Total Debt: {cash - debt:,.2f} "
++            f"({statement.unit}); derived on the same date using these exact source rows. "
++            "Debt scope/restricted cash must be checked before calling this net cash."
++        )
++    else:
++        lines.append(
++            "- Cash minus debt: NOT AVAILABLE (cash/equivalents or Total Debt "
++            "missing/empty on this date). Do not substitute Current Liabilities or Total Liabilities."
++        )
++    if latest.values.get("Other Receivables") is not None:
++        lines.append(
++            "- Other Receivables is an asset row; its composition is NOT AVAILABLE "
++            "from this row alone. Do not rename it customer advances, contract "
++            "liabilities or a dealer-demand reservoir without notes."
++        )
++    return lines
++
++
+ def build_summary(
+     income_csv: str | None, cash_csv: str | None, balance_csv: str | None = None
+ ) -> str:
+@@ -244,21 +296,23 @@ def build_summary(
+                     )
+     elif cash_csv:
+         lines.append("## Cash flow: NOT AVAILABLE (no parseable multiline statement)")
++    balance = parse(balance_csv)
++    lines.extend(_balance_metrics(balance))
+     for label, statement in (
+         ("Income statement", income),
+         ("Cash flow", cash),
+-        ("Balance sheet", parse(balance_csv)),
++        ("Balance sheet", balance),
+     ):
+         lines.extend(_dated_facts(statement, label))
+     return "\n".join(lines)
+ 
+ 
+-def summary_from_state(state: dict[str, Any]) -> str:
++def statements_from_state(state: dict[str, Any]) -> dict[str, str]:
+     """Use matched tool calls/results in state only; never reopen a shared log."""
+     ticker = str(state.get("company_of_interest", "")).upper()
+     as_of = state.get("trade_date")
+     if not ticker or not as_of:
+-        return ""
++        return {}
+     calls: dict[str, dict] = {}
+     statements: dict[str, str] = {}
+     allowed = {
+@@ -306,6 +360,79 @@ def summary_from_state(state: dict[str, Any]) -> str:
+             continue
+         # Last result of the same tool in the current state wins, even if empty.
+         statements[kind] = text
++    return statements
++
++
++def summary_from_state(state: dict[str, Any]) -> str:
++    statements = statements_from_state(state)
+     return build_summary(
+         statements.get("income"), statements.get("cash"), statements.get("balance")
+     )
++
++
++def financial_claim_warnings(report: str, statements: dict[str, str]) -> list[dict[str, str]]:
++    """Flag a few risky *assertions* for review, not certify a report's truth.
++
++    This deliberately bounded Chinese/English screen reads matched statements,
++    not profile/notes/news. A flag asks for verification, including other tools.
++    It cannot exhaustively understand prose, tables, negation or causal claims.
++    """
++    warnings: list[dict[str, str]] = []
++    cash = parse(statements.get("cash"))
++    income = parse(statements.get("income"))
++    balance = parse(statements.get("balance"))
++    unknown_cash_duration = any(p.months is None for p in cash.periods)
++    missing_debt = bool(balance.periods) and max(
++        balance.periods, key=lambda p: p.end
++    ).values.get("Total Debt") is None
++    unknown_units = any(s.periods and (not s.currency or not s.scale) for s in (income, cash, balance))
++    patterns = (
++        ("cash_period", unknown_cash_duration,
++         r"(?:单季|Q[1-4]|[一二三四]季度|single.quarter)[^。；;\n]{0,50}(?:现金流|资本开支|cash flow|\bOCF\b|\bFCF\b)|(?:现金流|资本开支|cash flow|\bOCF\b|\bFCF\b)[^。；;\n]{0,50}(?:单季|Q[1-4]|[一二三四]季度|single.quarter)",
++         "现金流来源有期间长度不明的列；该季度/单季标签须核对具体列的起始日和长度。"),
++        ("net_cash_definition", True,
++         r"(?=.*(?:净现金|net cash))(?=.*(?:流动负债|current liabilities))",
++         "现金减流动负债不能命名为净现金；需核对同日现金和债务的定义。"),
++        ("net_cash_scope", missing_debt,
++         r"(?:净现金|net cash).*\d",
++         "匹配的资产负债表缺同日Total Debt；量化净现金须另给现金/债务范围和来源，不能补零。"),
++        ("statement_units", unknown_units,
++         r"以人民币元计|人民币元为单位|source.{0,30}(?:in CNY units|in RMB units)",
++         "匹配的报表未声明币种/数量级；公司profile币种不能证明报表以人民币元计。"),
++        ("receivables_category", True,
++         r"(?=.*(?:其他应收|other receivables))(?=.*(?:预收|打款|蓄水池|customer advances|contract liabilities))",
++         "其他应收款是资产；客户预付款/渠道蓄水池的解释须有附注支持。"),
++        ("return_double_count", True,
++         r"(?=.*(?:FCF|自由现金流))(?=.*(?:股息率|dividend yield))(?=.*(?:总回报|total return))(?=.*(?:加上|\+|plus|add))",
++         "FCF收益率与股息率不能直接相加当作股东总回报，可能重复计算现金。"),
++    )
++    for number, raw in enumerate(report.splitlines(), 1):
++        line = re.sub(r"[*_`]+", "", raw).strip()
++        if not line:
++            continue
++        # Explicit corrective statements must not be mistaken for the bad claim.
++        # Mixed assertions/negations remain a limitation, documented above.
++        if re.search(r"不能|不可|不应|并非|不是|不得|无法|未提供|不做|not\b|cannot\b|do not\b", line, re.I):
++            continue
++        for code, applicable, pattern, reason in patterns:
++            if applicable and re.search(pattern, line, re.I):
++                warnings.append({"code": code, "line": str(number), "excerpt": raw[:400], "reason": reason})
++    return warnings
++
++
++def annotate_financial_report(report: str, state: dict[str, Any]) -> str:
++    """Keep model text intact, append bounded review findings for downstream readers."""
++    if not report.strip():
++        return report  # A note must never turn a missing analyst reply into content.
++    statements = statements_from_state(state)
++    warnings = financial_claim_warnings(report, statements)
++    marker = FINANCIAL_REVIEW_MARKER if warnings else FINANCIAL_CHECK_MARKER
++    lines = [report, "", marker, "", "### 程序财务复核提示"]
++    if warnings:
++        lines.append("状态：REVIEW。以下原文表述需核对来源，后续分析不得直接当作已证实事实：")
++        for warning in warnings:
++            lines.append(f"- [{warning['code']}] 原文第{warning['line']}行：{warning['reason']}")
++    else:
++        lines.append("有限规则筛查未命中；不代表财务事实、单位、期间或因果解释已通过验收。")
++    lines.append("范围：匹配本次标的和分析日的财务工具报表；不覆盖全部工具、附注或自然语言推断。")
++    return "\n".join(lines)

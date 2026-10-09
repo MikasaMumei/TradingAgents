@@ -1,0 +1,389 @@
+diff --git a/tests/test_fundamentals_units.py b/tests/test_fundamentals_units.py
+index febebe4..97a3946 100644
+--- a/tests/test_fundamentals_units.py
++++ b/tests/test_fundamentals_units.py
+@@ -50,10 +50,18 @@ def test_each_money_figure_carries_the_currency_it_is_in():
+ 
+     assert "Market Cap: 203440193536 GBP" in out
+     assert "EPS (TTM): 3.42 GBP" in out and "Book Value: 29.1 GBP" in out
+-    assert "52 Week High: 3800.0 GBp" in out and "50 Day Average: 3500.5 GBp" in out
++    assert "52 Week High: 3800.0 GBp" in out
+     assert "Revenue (TTM): 296600993792 USD" in out and "Net Income: 25970999296 USD" in out
+ 
+ 
++@pytest.mark.unit
++def test_unverified_metadata_averages_do_not_override_market_indicators():
++    out = _fundamentals({"longName": "New listing", "currency": "USD",
++                         "fiftyDayAverage": 140.0, "twoHundredDayAverage": 145.0})
++    assert "50 Day Average:" not in out and "200 Day Average:" not in out
++    assert "Insufficient-history indicators remain unavailable" in out
++
++
+ @pytest.mark.unit
+ def test_an_adr_quotes_in_dollars_and_reports_in_its_home_currency():
+     out = _fundamentals({"longName": "TSMC", "currency": "USD", "financialCurrency": "TWD",
+diff --git a/tools_probe/exchange_sessions.py b/tools_probe/exchange_sessions.py
+index 8fcfb22..5dad021 100644
+--- a/tools_probe/exchange_sessions.py
++++ b/tools_probe/exchange_sessions.py
+@@ -308,6 +308,12 @@ def install() -> bool:
+     orig_load = ohlcv.load_ohlcv
+ 
+     def load_ohlcv(symbol, as_of_date, fill_gaps=True, **kw):
++        # The native loader and this guard share a reentrant cache lock. Keep
++        # refresh/removal in the same transaction as the initial read.
++        with ohlcv.cache_lock(symbol):
++            return load_locked(symbol, as_of_date, fill_gaps=fill_gaps, **kw)
++
++    def load_locked(symbol, as_of_date, fill_gaps=True, **kw):
+         frame = orig_load(symbol, as_of_date, fill_gaps=fill_gaps, **kw)
+         if frame is None or getattr(frame, "empty", True):
+             return frame
+@@ -344,6 +350,13 @@ def install() -> bool:
+ 
+     market.get_YFin_data_online = get_YFin_data_online
+ 
++    # The router imports its callable before this runtime filter is installed.
++    # Update the actual vendor dispatch entry, not only the module attribute.
++    from tradingagents.dataflows import router
++
++    if router.VENDOR_METHODS["get_stock_data"]["yfinance"] is orig_online:
++        router.VENDOR_METHODS["get_stock_data"]["yfinance"] = get_YFin_data_online
++
+     orig_closes = market.get_closes
+ 
+     def get_closes(symbol, start_date, end_date, *a, **kw):
+@@ -356,5 +369,10 @@ def install() -> bool:
+ 
+     market.get_closes = get_closes
+ 
++    from tradingagents.memory import settlement
++
++    if settlement.get_closes is orig_closes:
++        settlement.get_closes = get_closes
++
+     ohlcv._exchange_settle_patched = True
+     return True
+diff --git a/tradingagents/dataflows/vendors/yahoo/fundamentals.py b/tradingagents/dataflows/vendors/yahoo/fundamentals.py
+index 00698cd..7f31e40 100644
+--- a/tradingagents/dataflows/vendors/yahoo/fundamentals.py
++++ b/tradingagents/dataflows/vendors/yahoo/fundamentals.py
+@@ -75,8 +75,6 @@ def get_fundamentals(
+         ("Beta", info.get("beta")),
+         ("52 Week High", money("fiftyTwoWeekHigh", quote)),
+         ("52 Week Low", money("fiftyTwoWeekLow", quote)),
+-        ("50 Day Average", money("fiftyDayAverage", quote)),
+-        ("200 Day Average", money("twoHundredDayAverage", quote)),
+         ("Revenue (TTM)", money("totalRevenue", reported)),
+         ("Gross Profit", money("grossProfits", reported)),
+         ("EBITDA", money("ebitda", reported)),
+@@ -101,7 +99,14 @@ def get_fundamentals(
+     if not lines:
+         raise_for_empty(ticker, canonical, "fundamental fields")
+ 
+-    return f"# Company Fundamentals for {canonical}\n\n" + "\n".join(lines)
++    # Metadata averages can use less than the named window for recent listings
++    # and include intraday prices. Validated indicators belong to the market
++    # tool/snapshot, which verifies the available settled history.
++    return (
++        f"# Company Fundamentals for {canonical}\n\n" + "\n".join(lines)
++        + "\n\nMoving averages are supplied by the verified market snapshot, not "
++        "company metadata. Insufficient-history indicators remain unavailable."
++    )
+ 
+ 
+ def _statement(ticker, freq, as_of_date, title, quarterly_attr, annual_attr) -> str:
+diff --git a/tradingagents/dataflows/vendors/yahoo/market.py b/tradingagents/dataflows/vendors/yahoo/market.py
+index b099caa..6925598 100644
+--- a/tradingagents/dataflows/vendors/yahoo/market.py
++++ b/tradingagents/dataflows/vendors/yahoo/market.py
+@@ -10,7 +10,11 @@ from stockstats import wrap
+ from tradingagents.dataflows.errors import NoMarketDataError, VendorError
+ from tradingagents.dataflows.symbols import normalize_symbol
+ from tradingagents.dataflows.vendors.yahoo.common import raise_for_empty, yf_retry
+-from tradingagents.dataflows.vendors.yahoo.ohlcv import _assert_ohlcv_not_stale, load_ohlcv
++from tradingagents.dataflows.vendors.yahoo.ohlcv import (
++    _assert_ohlcv_not_stale,
++    indicator_ready_rows,
++    load_ohlcv,
++)
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -217,17 +221,20 @@ def _get_stock_stats_bulk(
+     from stockstats import wrap
+ 
+     data = load_ohlcv(symbol, as_of_date)
++    ready = indicator_ready_rows(data, indicator)
+     df = wrap(data)
+     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
+ 
+     df[indicator]  # This triggers stockstats to calculate the indicator
+ 
+     result_dict = {}
+-    for _, row in df.iterrows():
++    for position, (_, row) in enumerate(df.iterrows()):
+         date_str = row["Date"]
+         indicator_value = row[indicator]
+ 
+-        if pd.isna(indicator_value):
++        if not ready.iloc[position]:
++            result_dict[date_str] = "N/A: insufficient history for full indicator window"
++        elif pd.isna(indicator_value):
+             result_dict[date_str] = "N/A"
+         else:
+             result_dict[date_str] = str(indicator_value)
+@@ -282,6 +289,7 @@ def get_stock_stats(
+     ],
+ ):
+     data = load_ohlcv(symbol, as_of_date)
++    ready = indicator_ready_rows(data, indicator)
+     df = wrap(data)
+     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
+     as_of_str = pd.to_datetime(as_of_date).strftime("%Y-%m-%d")
+@@ -290,6 +298,8 @@ def get_stock_stats(
+     matching_rows = df[df["Date"].str.startswith(as_of_str)]
+ 
+     if not matching_rows.empty:
++        if not ready.loc[matching_rows.index[0]]:
++            return "N/A: insufficient history for full indicator window"
+         indicator_value = matching_rows[indicator].values[0]
+         return indicator_value
+     else:
+diff --git a/tradingagents/dataflows/vendors/yahoo/ohlcv.py b/tradingagents/dataflows/vendors/yahoo/ohlcv.py
+index beb612f..4b69f80 100644
+--- a/tradingagents/dataflows/vendors/yahoo/ohlcv.py
++++ b/tradingagents/dataflows/vendors/yahoo/ohlcv.py
+@@ -1,5 +1,6 @@
+ import logging
+ import os
++import threading
+ 
+ import pandas as pd
+ import yfinance as yf
+@@ -23,6 +24,31 @@ MAX_OHLCV_STALE_DAYS = 10
+ # at all (weekend, holiday) cannot trigger a download on every call.
+ OHLCV_CACHE_TTL_SECONDS = 900
+ 
++_CACHE_LOCKS: dict[str, threading.RLock] = {}
++_CACHE_LOCKS_GUARD = threading.Lock()
++
++
++def cache_lock(symbol: str) -> threading.RLock:
++    """Serialize readers, replacement and guard refresh for one cache file."""
++    safe = safe_ticker_component(normalize_symbol(symbol))
++    path = os.path.normcase(os.path.abspath(os.path.join(
++        get_config()["data_cache_dir"], f"{safe}-YFin-data.csv"
++    )))
++    with _CACHE_LOCKS_GUARD:
++        return _CACHE_LOCKS.setdefault(path, threading.RLock())
++
++
++def indicator_ready_rows(data: pd.DataFrame, indicator: str) -> pd.Series:
++    """Fixed-window SMAs require a complete window of observed close values."""
++    window = {"close_50_sma": 50, "close_200_sma": 200}.get(indicator)
++    if window is None:
++        return pd.Series(True, index=data.index)
++    column = "Close" if "Close" in data.columns else "close"
++    valid = pd.to_numeric(data[column], errors="coerce").replace(
++        [float("inf"), float("-inf")], float("nan")
++    ).notna()
++    return valid.rolling(window, min_periods=window).sum().eq(window)
++
+ 
+ def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
+     """Normalize the date column to ``Date``.
+@@ -159,6 +185,12 @@ def _cache_is_fresh(data_file, as_of_dt, now) -> bool:
+ 
+ 
+ def load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataFrame:
++    """Load one symbol under its cache lock, including reads and replacement."""
++    with cache_lock(symbol):
++        return _load_ohlcv(symbol, as_of_date, fill_gaps)
++
++
++def _load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataFrame:
+     """Fetch OHLCV data with caching, filtered to prevent look-ahead bias.
+ 
+     Downloads 5 years of data up to today and caches per symbol. On
+@@ -255,5 +287,3 @@ def load_ohlcv(symbol: str, as_of_date: str, fill_gaps: bool = True) -> pd.DataF
+     _assert_ohlcv_not_stale(data, as_of_date, symbol, canonical)
+ 
+     return data
+-
+-
+diff --git a/tradingagents/dataflows/vendors/yahoo/snapshot.py b/tradingagents/dataflows/vendors/yahoo/snapshot.py
+index 3bec5eb..0b91bb3 100644
+--- a/tradingagents/dataflows/vendors/yahoo/snapshot.py
++++ b/tradingagents/dataflows/vendors/yahoo/snapshot.py
+@@ -17,7 +17,7 @@ from stockstats import wrap
+ 
+ from tradingagents.dataflows.errors import NoMarketDataError
+ from tradingagents.dataflows.symbols import normalize_symbol
+-from tradingagents.dataflows.vendors.yahoo.ohlcv import load_ohlcv
++from tradingagents.dataflows.vendors.yahoo.ohlcv import indicator_ready_rows, load_ohlcv
+ 
+ # A fixed, common indicator set so the snapshot is the same shape every run.
+ DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
+@@ -79,6 +79,9 @@ def build_verified_market_snapshot(
+     selected = tuple(indicators or DEFAULT_SNAPSHOT_INDICATORS)
+     indicator_values: dict[str, str] = {}
+     for name in selected:
++        if not indicator_ready_rows(df, name).iloc[-1]:
++            indicator_values[name] = "N/A (insufficient history for full indicator window)"
++            continue
+         try:
+             stock_df[name]  # triggers stockstats calculation
+             indicator_values[name] = _fmt(stock_df.iloc[-1][name])
+@@ -95,6 +98,8 @@ def build_verified_market_snapshot(
+         "",
+         f"- Requested analysis date: {as_of_date}",
+         f"- Latest trading row used: {latest_date}",
++        f"- Historical trading rows available: {len(df)}",
++        "- An unavailable full-window SMA must not be replaced with a partial-window average or company metadata.",
+         "- Rows after the requested analysis date are excluded before verification.",
+         "",
+         "### Latest verified OHLCV row",
+diff --git a/tests/test_indicator_history.py b/tests/test_indicator_history.py
+new file mode 100644
+index 0000000..4b505e0
+--- /dev/null
++++ b/tests/test_indicator_history.py
+@@ -0,0 +1,137 @@
++"""Full-window indicators and actual vendor dispatch must honor market evidence."""
++
++import subprocess
++import sys
++from pathlib import Path
++
++import pandas as pd
++import pytest
++
++from tradingagents.dataflows.vendors.yahoo import market, snapshot
++
++
++def prices(rows):
++    closes = pd.Series(range(1, rows + 1), dtype=float)
++    return pd.DataFrame({
++        "Date": pd.bdate_range("2025-01-01", periods=rows),
++        "Open": closes, "High": closes + 1, "Low": closes - 1,
++        "Close": closes, "Volume": 1000,
++    })
++
++
++@pytest.mark.parametrize("rows", [81, 199, 200])
++def test_sma_window_readiness_matches_across_bulk_single_and_snapshot(monkeypatch, rows):
++    data = prices(rows)
++    monkeypatch.setattr(market, "load_ohlcv", lambda *a, **k: data.copy())
++    monkeypatch.setattr(snapshot, "load_ohlcv", lambda *a, **k: data.copy())
++    day = data.iloc[-1]["Date"].strftime("%Y-%m-%d")
++    bulk = market._get_stock_stats_bulk("SPCX", "close_200_sma", day)[day]
++    single = market.get_stock_stats("SPCX", "close_200_sma", day)
++    report = snapshot.build_verified_market_snapshot("SPCX", day)
++    row = next(line for line in report.splitlines() if line.startswith("| close_200_sma |"))
++    if rows < 200:
++        assert "insufficient history" in bulk
++        assert "insufficient history" in single
++        assert "insufficient history" in row
++    else:
++        assert float(bulk) == pytest.approx(100.5)
++        assert single == pytest.approx(100.5)
++        assert "100.50" in row
++
++
++def test_early_and_missing_close_windows_remain_unavailable(monkeypatch):
++    data = prices(250)
++    monkeypatch.setattr(market, "load_ohlcv", lambda *a, **k: data.copy())
++    day = data.iloc[-1]["Date"].strftime("%Y-%m-%d")
++    bulk = market._get_stock_stats_bulk("SPCX", "close_200_sma", day)
++    assert "insufficient history" in bulk[data.iloc[198]["Date"].strftime("%Y-%m-%d")]
++    assert float(bulk[data.iloc[199]["Date"].strftime("%Y-%m-%d")]) == pytest.approx(100.5)
++    data.loc[249, "Close"] = float("nan")
++    assert "insufficient history" in market.get_stock_stats("SPCX", "close_200_sma", day)
++
++
++def test_guard_replaces_preimported_router_and_settlement_references():
++    root = Path(__file__).parents[1]
++    code = r'''
++import sys,io
++sys.path.insert(0,"tools_probe")
++import pandas as pd
++import exchange_sessions as E
++from tradingagents.dataflows import router
++from tradingagents.dataflows.vendors.yahoo import market
++from tradingagents.memory import settlement
++data=pd.DataFrame({"Open":[10.,11.],"High":[12.,13.],"Low":[9.,10.],
++    "Close":[11.,12.],"Volume":[100,200]},index=pd.to_datetime(["2026-10-07","2026-10-08"]))
++data.index.name="Date"
++class Ticker:
++    def __init__(self,*a):pass
++    def history(self,**kw):return data.copy()
++market.yf.Ticker=Ticker
++router.get_vendor=lambda *a,**k:"yfinance"
++E.last_settled_date=lambda *a,**k:pd.Timestamp("2026-10-07")
++assert router.VENDOR_METHODS["get_stock_data"]["yfinance"] is market.get_YFin_data_online
++assert settlement.get_closes is market.get_closes
++assert E.install()
++text=router.route_to_vendor("get_stock_data","SPCX","2026-10-07","2026-10-08")
++body="\n".join(line for line in text.splitlines() if not line.startswith("#"))
++rows=pd.read_csv(io.StringIO(body))
++assert rows["Date"].tolist()==["2026-10-07"],rows["Date"].tolist()
++closes=settlement.get_closes("SPCX","2026-10-07","2026-10-09")
++assert list(closes.index.strftime("%Y-%m-%d"))==["2026-10-07"]
++assert not E.install()
++'''
++    result = subprocess.run(
++        [sys.executable, "-B", "-c", code], cwd=root, capture_output=True,
++        text=True, encoding="utf-8", errors="replace", timeout=30,
++    )
++    assert result.returncode == 0, result.stdout + result.stderr
++
++
++@pytest.mark.parametrize("guarded", [False, True])
++def test_parallel_indicator_loads_serialize_one_cache_transaction(tmp_path, guarded):
++    root = Path(__file__).parents[1]
++    code = r'''
++import os,sys,threading,time
++from concurrent.futures import ThreadPoolExecutor
++import pandas as pd
++os.environ['TRADINGAGENTS_CACHE_DIR']=sys.argv[1]
++sys.path.insert(0,'tools_probe')
++from tradingagents.dataflows.vendors.yahoo import ohlcv
++from tradingagents.dataflows.config import get_config
++get_config()['data_cache_dir']=sys.argv[1]
++active=maximum=0
++count_lock=threading.Lock()
++barrier=threading.Barrier(6)
++data=pd.DataFrame({'Open':[10.,11.],'High':[12.,13.],'Low':[9.,10.],
++    'Close':[11.,12.],'Volume':[100,200]},index=pd.to_datetime(['2026-10-07','2026-10-08']))
++data.index.name='Date'
++class Ticker:
++    def __init__(self,*a):pass
++    def history(self,**kw):
++        global active,maximum
++        with count_lock:
++            active+=1;maximum=max(maximum,active)
++        try:
++            time.sleep(.03)
++            return data.copy()
++        finally:
++            with count_lock:active-=1
++ohlcv.yf.Ticker=Ticker
++ohlcv._cache_is_fresh=lambda *a:False
++if sys.argv[2]=='1':
++    import exchange_sessions as E
++    E.last_settled_date=lambda *a,**k:pd.Timestamp('2026-10-07')
++    assert E.install()
++def load(_):
++    barrier.wait(timeout=10)
++    return ohlcv.load_ohlcv('SPCX','2026-10-09',fill_gaps=False)
++with ThreadPoolExecutor(max_workers=6) as pool:frames=list(pool.map(load,range(6)))
++assert maximum==1,maximum
++assert all(len(frame)>0 for frame in frames)
++if sys.argv[2]=='1':assert all(frame['Date'].max()==pd.Timestamp('2026-10-07') for frame in frames)
++'''
++    result = subprocess.run(
++        [sys.executable, "-B", "-c", code, str(tmp_path), str(int(guarded))],
++        cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
++    )
++    assert result.returncode == 0, result.stdout + result.stderr

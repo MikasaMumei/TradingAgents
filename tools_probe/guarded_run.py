@@ -462,7 +462,7 @@ def main() -> int:
                 "analyst_data": {},
             }
         elif report_dir is None:
-            # No report line: the run produced nothing. Falling back to
+            # No saved path returned: the run produced nothing. Falling back to
             # whatever is newest on disk is how a failed run gets graded
             # against the previous run''s leftovers, so refuse instead.
             print("guard: the run saved no report; refusing to grade an old one")
@@ -500,6 +500,7 @@ def main() -> int:
                 "end": run_log.end,
                 "prefetch_log": str(prefetch_log.path) if prefetch_log else None,
                 "verdict": ("ACCEPT" if verdict["ok"] else "REJECT") if verdict else None,
+                "content_review": verdict.get("content_review", "NOT_CHECKED") if verdict else "NOT_CHECKED",
             },
         )
         attempts.append(
@@ -511,8 +512,13 @@ def main() -> int:
         )
         _print_verdict(verdict)
 
+        if verdict.get("content_review") == "REVIEW":
+            print("guard: financial content needs REVIEW; report retained, no automatic retry")
+            _print_attempts(attempts)
+            return 2
+
         if verdict["ok"]:
-            print("guard: accepted")
+            print("guard: stages accepted; financial content=" + verdict.get("content_review", "NOT_CHECKED"))
             if len(attempts) > 1:
                 _print_attempts(attempts)
             return 0
@@ -539,23 +545,25 @@ def _run_cli(cli_args):
     """Run the CLI once. Returns (report_dir_or_None, failed_flag)."""
     import contextlib
     import io
-    import re as _re
 
     from cli.main import app
 
     buf = io.StringIO()
     failed = False
+    report_dir = None
     try:
         with contextlib.redirect_stdout(buf):
-            app(cli_args)
+            result = app(cli_args, standalone_mode=False)
+            if isinstance(result, (str, pathlib.Path)):
+                report_dir = str(result)
+            elif isinstance(result, int):
+                failed = bool(result)
     except SystemExit as exc:
         failed = bool(exc.code)
     except Exception as exc:
         print(f"guard: CLI raised {type(exc).__name__}: {exc}")
         failed = True
-    printed = buf.getvalue()
-    match = _re.search(r"Report saved to:\s*(\S+)", printed)
-    return (match.group(1) if match else None), failed
+    return report_dir, failed
 
 
 def _report_counts(counts):
@@ -637,6 +645,7 @@ def _print_verdict(verdict):
             )
         return
     total = len(verdict["results"])
+    print("CONTENT : " + verdict.get("content_review", "NOT_CHECKED"))
     failed = verdict.get("failed") or []
     rollup = verdict.get("analyst_data") or {}
     unproven = verdict.get("starved_analysts") or []

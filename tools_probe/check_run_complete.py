@@ -15,7 +15,8 @@ Three rules follow from that:
 * A missing file is a failure, never a skip, and a stage with no body is a
   failure even when the file is non-empty.
 
-Exit code is 0 only when every enabled stage carries real content.
+Exit code 1 rejects incomplete stages/data; 2 requests financial content review.
+Exit code 0 establishes completeness only, never full factual correctness.
 
     .venv\Scripts\python.exe tools_probe\check_run_complete.py <report-dir> [--json]
 """
@@ -60,6 +61,8 @@ STAGES = {
 
 def body_of(text: str) -> str:
     """Drop blank lines and lines that are only a role label."""
+    # A program-generated review note must not rescue an empty/short model reply.
+    text = re.split(r"<!-- financial-semantics: (?:REVIEW|LIMITED_CHECK) -->", text, maxsplit=1)[0]
     return "\n".join(
         line for line in text.splitlines() if line.strip() and not ROLE_LINE.match(line)
     ).strip()
@@ -445,8 +448,10 @@ def check(report_dir: pathlib.Path, fallback_analysts=None, tool_log=None, degra
             if record["stage"] == "Analyst: " + analyst:
                 record["data_state"] = info["state"]
     ok = not failed and not unproven
+    financial_review = content_review(report_dir, analysts)
     return {
         "ok": ok,
+        "content_review": financial_review,
         "analysts": analysts,
         "results": results,
         "failed": failed,
@@ -458,6 +463,24 @@ def check(report_dir: pathlib.Path, fallback_analysts=None, tool_log=None, degra
         "stages_ok": not failed,
         "degraded": degradation_notes(degraded),
     }
+
+
+def content_review(report_dir, analysts):
+    """Separate operational completeness from the analyst's bounded content screen."""
+    from tradingagents.dataflows.financial_metrics import (
+        FINANCIAL_CHECK_MARKER,
+        FINANCIAL_REVIEW_MARKER,
+    )
+
+    if "fundamentals" not in analysts:
+        return "NOT_CHECKED"
+    path = pathlib.Path(report_dir) / "1_analysts" / "fundamentals.md"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    if FINANCIAL_REVIEW_MARKER in text:
+        return "REVIEW"
+    if FINANCIAL_CHECK_MARKER in text:
+        return "LIMITED_CHECK_NO_FLAGS"
+    return "NOT_CHECKED"
 
 
 def degradation_notes(notes):
@@ -510,7 +533,7 @@ def main() -> int:
 
     if args.json:
         print(json.dumps(verdict, ensure_ascii=False, indent=2, default=str))
-        return 0 if verdict["ok"] else 1
+        return 2 if verdict.get("content_review") == "REVIEW" else (0 if verdict["ok"] else 1)
 
     if not verdict.get("results"):
         print("REJECT: {}".format(verdict.get("reason")))
@@ -548,6 +571,7 @@ def main() -> int:
     if verdict.get("resumed"):
         print("RESUMED : a checkpoint was replayed; restored stages carry no evidence here")
     print("VERDICT : {!s}".format("ACCEPT" if verdict["ok"] else "REJECT"))
+    print("CONTENT : " + verdict.get("content_review", "NOT_CHECKED"))
     if unproven:
         print(
             "          {} had no usable input; this is NOT a complete analysis".format(
@@ -574,7 +598,7 @@ def main() -> int:
                 d.get("symbol"), d.get("stage"), str(d.get("error"))[:44]
             )
         )
-    return 0 if verdict["ok"] else 1
+    return 2 if verdict.get("content_review") == "REVIEW" else (0 if verdict["ok"] else 1)
     raise SystemExit(main())
 
 

@@ -2,6 +2,7 @@
 terminal stops up front, naming what to set, instead of waiting on a prompt."""
 
 import datetime
+from pathlib import Path
 
 import pytest
 import typer
@@ -112,9 +113,10 @@ def test_save_and_show_answer_the_questions_after_the_run(monkeypatch, tmp_path)
     graph.run_settings = lambda: {}
     state = {"market_report": "M", "final_trade_decision": "**Rating**: Hold"}
 
-    run._offer_reports(state, graph, "NVDA", save=True, show=False)
+    saved_path = run._offer_reports(state, graph, "NVDA", save=True, show=False)
 
     assert list(tmp_path.glob("reports/NVDA_*/complete_report.md"))
+    assert (saved_path / "complete_report.md").is_file()
     assert shown == []
 
 
@@ -240,6 +242,43 @@ def _report_graph(tmp_path):
 
 
 STATE = {"market_report": "M", "final_trade_decision": "**Rating**: Hold"}
+
+
+@pytest.mark.unit
+def test_failed_or_declined_save_returns_no_report_path(monkeypatch, tmp_path):
+    graph = _report_graph(tmp_path)
+
+    def fail(*args, **kwargs):
+        raise OSError("Save failed")
+
+    monkeypatch.setattr(graph, "save_reports", fail)
+    assert run._offer_reports(STATE, graph, "NVDA", save=True, show=False) is None
+    assert run._offer_reports(STATE, graph, "NVDA", save=False, show=False) is None
+
+
+@pytest.mark.unit
+def test_guard_uses_callback_path_even_when_display_wraps(monkeypatch, tmp_path):
+    from cli import main
+
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[1] / "tools_probe"))
+    import guarded_run
+
+    expected = tmp_path / ("long directory name " * 6)
+
+    def finish(**kwargs):
+        print("Report saved to: truncated\\nrest of display path")
+        return expected
+
+    monkeypatch.setattr(main, "run_analysis", finish)
+    report_dir, failed = guarded_run._run_cli(["--ticker", "AAPL", "--save", "--no-show"])
+    assert report_dir == str(expected)
+    assert not failed
+
+    def fail(**kwargs):
+        raise typer.Exit(code=1)
+
+    monkeypatch.setattr(main, "run_analysis", fail)
+    assert guarded_run._run_cli(["--ticker", "AAPL"]) == (None, True)
 
 
 @pytest.mark.unit

@@ -10,7 +10,11 @@ from stockstats import wrap
 from tradingagents.dataflows.errors import NoMarketDataError, VendorError
 from tradingagents.dataflows.symbols import normalize_symbol
 from tradingagents.dataflows.vendors.yahoo.common import raise_for_empty, yf_retry
-from tradingagents.dataflows.vendors.yahoo.ohlcv import _assert_ohlcv_not_stale, load_ohlcv
+from tradingagents.dataflows.vendors.yahoo.ohlcv import (
+    _assert_ohlcv_not_stale,
+    indicator_ready_rows,
+    load_ohlcv,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -217,17 +221,20 @@ def _get_stock_stats_bulk(
     from stockstats import wrap
 
     data = load_ohlcv(symbol, as_of_date)
+    ready = indicator_ready_rows(data, indicator)
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
 
     df[indicator]  # This triggers stockstats to calculate the indicator
 
     result_dict = {}
-    for _, row in df.iterrows():
+    for position, (_, row) in enumerate(df.iterrows()):
         date_str = row["Date"]
         indicator_value = row[indicator]
 
-        if pd.isna(indicator_value):
+        if not ready.iloc[position]:
+            result_dict[date_str] = "N/A: insufficient history for full indicator window"
+        elif pd.isna(indicator_value):
             result_dict[date_str] = "N/A"
         else:
             result_dict[date_str] = str(indicator_value)
@@ -282,6 +289,7 @@ def get_stock_stats(
     ],
 ):
     data = load_ohlcv(symbol, as_of_date)
+    ready = indicator_ready_rows(data, indicator)
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     as_of_str = pd.to_datetime(as_of_date).strftime("%Y-%m-%d")
@@ -290,6 +298,8 @@ def get_stock_stats(
     matching_rows = df[df["Date"].str.startswith(as_of_str)]
 
     if not matching_rows.empty:
+        if not ready.loc[matching_rows.index[0]]:
+            return "N/A: insufficient history for full indicator window"
         indicator_value = matching_rows[indicator].values[0]
         return indicator_value
     else:

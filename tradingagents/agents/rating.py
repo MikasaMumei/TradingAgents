@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from tradingagents.dataflows.financial_metrics import FINANCIAL_REVIEW_MARKER
+
 # Canonical, ordered 5-tier scale (most bullish to most bearish).
 RATINGS_5_TIER: tuple[str, ...] = (
     "Buy", "Overweight", "Hold", "Underweight", "Sell",
@@ -109,6 +111,10 @@ def run_rating(final_state: dict) -> str:
     The fallback serves a state without ``final_rating``, such as a run an older
     version completed and a checkpoint hands back unchanged.
     """
+    # Keep the model's original text/typed rating, but never record a flagged
+    # financial premise as an approved position in signals, memory or backtests.
+    if FINANCIAL_REVIEW_MARKER in (final_state.get("fundamentals_report") or ""):
+        return RATING_REVIEW
     return final_state.get("final_rating") or parse_rating(final_state.get("final_trade_decision", ""))
 
 

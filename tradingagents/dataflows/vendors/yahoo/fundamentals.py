@@ -75,8 +75,6 @@ def get_fundamentals(
         ("Beta", info.get("beta")),
         ("52 Week High", money("fiftyTwoWeekHigh", quote)),
         ("52 Week Low", money("fiftyTwoWeekLow", quote)),
-        ("50 Day Average", money("fiftyDayAverage", quote)),
-        ("200 Day Average", money("twoHundredDayAverage", quote)),
         ("Revenue (TTM)", money("totalRevenue", reported)),
         ("Gross Profit", money("grossProfits", reported)),
         ("EBITDA", money("ebitda", reported)),
@@ -101,7 +99,14 @@ def get_fundamentals(
     if not lines:
         raise_for_empty(ticker, canonical, "fundamental fields")
 
-    return f"# Company Fundamentals for {canonical}\n\n" + "\n".join(lines)
+    # Metadata averages can use less than the named window for recent listings
+    # and include intraday prices. Validated indicators belong to the market
+    # tool/snapshot, which verifies the available settled history.
+    return (
+        f"# Company Fundamentals for {canonical}\n\n" + "\n".join(lines)
+        + "\n\nMoving averages are supplied by the verified market snapshot, not "
+        "company metadata. Insufficient-history indicators remain unavailable."
+    )
 
 
 def _statement(ticker, freq, as_of_date, title, quarterly_attr, annual_attr) -> str:
